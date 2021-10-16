@@ -4,6 +4,72 @@ import torchvision
 import torchvision.transforms as transforms
 
 
+class bootstrapped_CIFAR10(torchvision.datasets.CIFAR10):
+    def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, load_train: bool=True, train_part: bool=True, **kwargs):
+        super().__init__(**args, train=load_train, **kwargs)
+
+        if train_part:
+            print(f"Using train ({len(self.data) - test_size})")
+            self.data = self.data[:-test_size]
+            self.targets = self.targets[:-test_size]
+        else:
+            print(f"Using validation ({test_size})")
+            self.train = False
+            self.data = self.data[-test_size:]
+            self.targets = self.targets[-test_size:]
+
+        if use_bootstrapping:
+            self.idxs = torch.randint(len(self.data), (len(self.data),))
+        else:
+            self.idxs = torch.arange(len(self.data))
+    
+    def __getitem__(self, idx):
+        return super().__getitem__(self.idxs[idx])
+
+class bootstrapped_CIFAR100(torchvision.datasets.CIFAR100):
+    def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, load_train: bool=True, train_part: bool=True, **kwargs):
+        super().__init__(**args, train=load_train, **kwargs)
+
+        if train_part:
+            print(f"Using train ({len(self.data) - test_size})")
+            self.data = self.data[:-test_size]
+            self.targets = self.targets[:-test_size]
+        else:
+            print(f"Using validation ({test_size})")
+            self.train = False
+            self.data = self.data[-test_size:]
+            self.targets = self.targets[-test_size:]
+
+        if use_bootstrapping:
+            self.idxs = torch.randint(len(self.data), (len(self.data),))
+        else:
+            self.idxs = torch.arange(len(self.data))
+    
+    def __getitem__(self, idx):
+        return super().__getitem__(self.idxs[idx])
+
+class bootstrapped_CIFAR100(torchvision.datasets.CIFAR100):
+    def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, use_test: bool=False, train: bool=True, **kwargs):
+        super().__init__(**args, train=not use_test, **kwargs)
+
+        if train:
+            print(f"Using train ({50000 - test_size})")
+            self.data = self.data[:-test_size]
+            self.targets = self.targets[:-test_size]
+        else:
+            print(f"Using validation ({test_size})")
+            self.train = False
+            self.data = self.data[-test_size:]
+            self.targets = self.targets[-test_size:]
+
+        if use_bootstrapping:
+            self.idxs = torch.randint(len(self.data), (len(self.data),))
+        else:
+            self.idxs = torch.arange(len(self.data))
+    
+    def __getitem__(self, idx):
+        return super().__getitem__(self.idxs[idx])
+
 class Transforms:
 
     class CIFAR10:
@@ -64,24 +130,23 @@ class Transforms:
 
 
 def loaders(dataset, path, batch_size, num_workers, transform_name, use_test=False,
-            shuffle_train=True):
-    ds = getattr(torchvision.datasets, dataset)
+            shuffle_train=True, use_bootstrapping=False):
+    if dataset == 'CIFAR10':
+        ds = bootstrapped_CIFAR10
+    elif dataset == 'CIFAR100':
+        ds = bootstrapped_CIFAR100
+    else:
+        ds = getattr(torchvision.datasets, dataset)
     path = os.path.join(path, dataset.lower())
     transform = getattr(getattr(Transforms, dataset), transform_name)
-    train_set = ds(path, train=True, download=True, transform=transform.train)
 
     if use_test:
         print('You are going to run models on the test set. Are you sure?')
-        test_set = ds(path, train=False, download=True, transform=transform.test)
+        train_set = ds(path, test_size=0, load_train=True, train_part=True, use_bootstrapping=use_bootstrapping, download=True, transform=transform.train)
+        test_set = ds(path, test_size=0, load_train=False, train_part=True, use_bootstrapping=use_bootstrapping, download=True, transform=transform.test)
     else:
-        print("Using train (45000) + validation (5000)")
-        train_set.data = train_set.data[:-5000]
-        train_set.targets = train_set.targets[:-5000]
-
-        test_set = ds(path, train=True, download=True, transform=transform.test)
-        test_set.train = False
-        test_set.data = test_set.data[-5000:]
-        test_set.targets = test_set.targets[-5000:]
+        train_set = ds(path, load_train=True, train_part=True, use_bootstrapping=use_bootstrapping, download=True, transform=transform.train)
+        test_set = ds(path, load_train=True, train_part=False, use_bootstrapping=use_bootstrapping, download=True, transform=transform.test)
 
     return {
                'train': torch.utils.data.DataLoader(
