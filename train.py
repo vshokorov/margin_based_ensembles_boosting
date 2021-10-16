@@ -25,6 +25,8 @@ def main():
                         help='dataset name (default: CIFAR10)')
     parser.add_argument('--use_test', action='store_true',
                         help='switches between validation and test set (default: validation)')
+    parser.add_argument('--bootstrapping', action='store_true',
+                        help='use bootstrapping while training')
     parser.add_argument('--transform', type=str, default='VGG', metavar='TRANSFORM',
                         help='transform name (default: VGG)')
     parser.add_argument('--data_path', type=str, default=None, metavar='PATH',
@@ -102,7 +104,8 @@ def main():
             args.batch_size,
             args.num_workers,
             args.transform,
-            args.use_test
+            args.use_test,
+            args.bootstrapping,
         )
         
         if args.shorten_dataset:
