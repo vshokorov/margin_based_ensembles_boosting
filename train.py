@@ -75,7 +75,7 @@ def main():
     exp_label = "%s_%s/%s"%(args.dataset, args.model, args.comment)
     if args.num_exps > 1:
         if not args.not_random_dir:
-            exp_label += "_%s/"%''.join(random.choice(letters) for i in range(5))
+            exp_label += "_%s/"%''.join(np.random.choice(letters) for i in range(5))
         else:
             exp_label += "/"
     
