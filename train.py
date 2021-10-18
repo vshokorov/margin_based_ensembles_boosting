@@ -14,6 +14,9 @@ import utils
 import metrics
 import random
 
+import warnings
+warnings.filterwarnings("ignore")
+
 import logger
 
 def main():
