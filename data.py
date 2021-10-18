@@ -6,7 +6,7 @@ import torchvision.transforms as transforms
 
 class bootstrapped_CIFAR10(torchvision.datasets.CIFAR10):
     def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, load_train: bool=True, train_part: bool=True, **kwargs):
-        super().__init__(**args, train=load_train, **kwargs)
+        super().__init__(*args, train=load_train, **kwargs)
 
         if train_part:
             print(f"Using train ({len(self.data) - test_size})")
@@ -28,32 +28,10 @@ class bootstrapped_CIFAR10(torchvision.datasets.CIFAR10):
 
 class bootstrapped_CIFAR100(torchvision.datasets.CIFAR100):
     def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, load_train: bool=True, train_part: bool=True, **kwargs):
-        super().__init__(**args, train=load_train, **kwargs)
+        super().__init__(*args, train=load_train, **kwargs)
 
         if train_part:
             print(f"Using train ({len(self.data) - test_size})")
-            self.data = self.data[:-test_size]
-            self.targets = self.targets[:-test_size]
-        else:
-            print(f"Using validation ({test_size})")
-            self.train = False
-            self.data = self.data[-test_size:]
-            self.targets = self.targets[-test_size:]
-
-        if use_bootstrapping:
-            self.idxs = torch.randint(len(self.data), (len(self.data),))
-        else:
-            self.idxs = torch.arange(len(self.data))
-    
-    def __getitem__(self, idx):
-        return super().__getitem__(self.idxs[idx])
-
-class bootstrapped_CIFAR100(torchvision.datasets.CIFAR100):
-    def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, use_test: bool=False, train: bool=True, **kwargs):
-        super().__init__(**args, train=not use_test, **kwargs)
-
-        if train:
-            print(f"Using train ({50000 - test_size})")
             self.data = self.data[:-test_size]
             self.targets = self.targets[:-test_size]
         else:
