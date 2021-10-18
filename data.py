@@ -130,7 +130,7 @@ class Transforms:
 
 
 def loaders(dataset, path, batch_size, num_workers, transform_name, use_test=False,
-            shuffle_train=True, use_bootstrapping=False):
+            use_bootstrapping=False, shuffle_train=True):
     if dataset == 'CIFAR10':
         ds = bootstrapped_CIFAR10
     elif dataset == 'CIFAR100':
