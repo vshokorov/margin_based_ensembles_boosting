@@ -62,7 +62,15 @@ else: # WideResNet
         if args.setting == "reg":
             logdirs = ["logs/apr200/train.py-CIFAR10_WideResNet28x10/width_ens/"]
             temps = np.arange(0.5, 2, 0.01) 
-               
+
+
+# VGG16; dataset: 10; reg
+logdirs = ["logs/oct/train.py-CIFAR10_VGG16",
+        #    "logs/oct/train.py-CIFAR10_VGG16/width64_jikko",
+        #    "logs/oct/train.py-CIFAR10_VGG16/width64_one_model_all_DS"
+           ]
+temps = np.arange(0.5, 3.2, 0.05) 
+
 computer = ComputeNLLs(setup=args.setup, regime=args.reg, temps=temps, dir=log.path)
 log.print(computer.compute_nlls(logdirs, args.model, args.dataset, args.setting, log,\
                             plen=1, reverse_order=False, max_std=10**5, max_enslen=10**5))

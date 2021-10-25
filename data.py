@@ -121,10 +121,10 @@ def loaders(dataset, path, batch_size, num_workers, transform_name, use_test=Fal
     if use_test:
         print('You are going to run models on the test set. Are you sure?')
         train_set = ds(path, test_size=0, load_train=True, train_part=True, use_bootstrapping=use_bootstrapping, download=True, transform=transform.train)
-        test_set = ds(path, test_size=0, load_train=False, train_part=True, use_bootstrapping=use_bootstrapping, download=False, transform=transform.test)
+        test_set = ds(path, test_size=0, load_train=False, train_part=True, use_bootstrapping=False, download=False, transform=transform.test)
     else:
         train_set = ds(path, load_train=True, train_part=True, use_bootstrapping=use_bootstrapping, download=True, transform=transform.train)
-        test_set = ds(path, load_train=True, train_part=False, use_bootstrapping=use_bootstrapping, download=False, transform=transform.test)
+        test_set = ds(path, load_train=True, train_part=False, use_bootstrapping=False, download=False, transform=transform.test)
 
     return {
                'train': torch.utils.data.DataLoader(

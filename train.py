@@ -152,7 +152,22 @@ def main():
         predictions_sum = np.zeros((len(loaders['test'].dataset), num_classes))
         
         for num_model in range(args.num_nets):
-
+            
+            if args.bootstrapping:
+                loaders, num_classes = data.loaders(
+                    args.dataset,
+                    args.data_path,
+                    args.batch_size,
+                    args.num_workers,
+                    args.transform,
+                    args.use_test,
+                    args.bootstrapping,
+                )
+                
+                if args.shorten_dataset:
+                    loaders["train"].dataset.targets = loaders["train"].dataset.targets[:5000]
+                    loaders["train"].dataset.data = loaders["train"].dataset.data[:5000]
+                
             model = architecture.base(num_classes=num_classes, **architecture.kwargs)
             model.cuda()
 

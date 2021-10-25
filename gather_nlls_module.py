@@ -172,7 +172,7 @@ class ComputeNLLs:
                     128,
                     1,
                     "%s_noDA"%("VGG" if model_name == "VGG16" else "ResNet"),
-                    True
+                    # True
                 )
         targets = np.array(loaders["test"].dataset.targets)
 
@@ -184,11 +184,11 @@ class ComputeNLLs:
             for i, p_folder in enumerate(sorted(os.listdir(logdir))):
                 if not "ipynb" in p_folder and not "run" in p_folder:
                     p_str = p_folder
-                    x = x = p_folder.find("_")
-                    if x > 0:
-                        p = float(p_folder[plen:x])
-                    else:
-                        p = float(p_folder[plen:])
+                    x = p_folder.find("_")
+                    # if x > 0:
+                    #     p = float(p_folder[plen:x])
+                    # else:
+                    p = p_folder[plen:]
                     exp_folders = sorted(os.listdir(logdir+"/"+p_folder))
                     if not p in preds:
                         preds[p] = []
