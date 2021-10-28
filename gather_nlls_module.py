@@ -229,7 +229,7 @@ class ComputeNLLs:
                         acc, nc_nll, c_nll, predictions, temps_ = ret
                     else: # "grid"
                         acc, c_nll, predictions = ret
-                    log.print("RESULT for", p_marker, "\tacc:", acc, "nc_nll:", round(nc_nll, 3), "c_nll:", round(c_nll, 3))
+                    log.print("RESULT for all ensemble:", p_marker, "\tacc:", acc, "nc_nll:", round(nc_nll, 3), "c_nll:", round(c_nll, 3))
 
 
                     for l in range(1, leng+1):
