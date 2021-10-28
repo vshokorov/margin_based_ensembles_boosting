@@ -1,0 +1,47 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Run test by gather_nlls", 
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/gather_nlls.py",
+            "console": "integratedTerminal",
+            "args": ["--dataset=10",
+                     "--model=VGG16",
+                     "--setup=2",
+                     "--reg=optimal",
+                     "--comment=test_run",
+                    ]
+        },
+        {
+            "name": "Python: Run training",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--dir=logs",
+                "--data_path=./data/",
+                "--dataset=CIFAR10", //"--use_test", 
+                "--bootstrapping",
+                "--transform=VGG",
+                "--model=VGG16",
+                "--save_freq=200",
+                "--print_freq=5",
+                "--epochs=200",
+                "--wd=0.001",
+                "--lr=0.05",
+                "--dropout=0.5",
+                "--comment=width64",
+                "--seed=25477",
+                "--width=64",
+                "--num-nets=8",
+                "--num-exps=1" //, "--not-save-weights"
+            ]
+        }
+    ]
+}

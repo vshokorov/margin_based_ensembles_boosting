@@ -65,8 +65,8 @@ else: # WideResNet
 
 
 # VGG16; dataset: 10; reg
-logdirs = ["logs/oct/train.py-CIFAR10_VGG16",
-        #    "logs/oct/train.py-CIFAR10_VGG16/width64_jikko",
+logdirs = ["logs/oct/train.py-CIFAR10_VGG16/test_it",
+        #    "logs/oct/train.py-CIFAR10_VGG16/width64_bootstrap_DS-10-25-23:41:20",
         #    "logs/oct/train.py-CIFAR10_VGG16/width64_one_model_all_DS"
            ]
 temps = np.arange(0.5, 3.2, 0.05) 

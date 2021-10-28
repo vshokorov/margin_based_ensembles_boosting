@@ -207,6 +207,8 @@ class ComputeNLLs:
                                     if acc > 0.15:
                                         preds[p].append(ppp[:, :, None] if self.setup==1\
                                                        else ppp)
+                                    else:
+                                        log.print(exp_folder+"/"+f, "is bad!")
         self.nlls_c = {}
         self.nlls_nc = {}
         self.accs_global = {}
@@ -220,6 +222,16 @@ class ComputeNLLs:
                     self.accs_global[p_marker] = []
                     self.temps_global[p_marker] = []
                     leng = min(len(preds[p_marker]), max_enslen)
+
+
+                    ret = self.get_ens_quality1_2o(preds[p_marker], targets)
+                    if self.regime == "optimal":
+                        acc, nc_nll, c_nll, predictions, temps_ = ret
+                    else: # "grid"
+                        acc, c_nll, predictions = ret
+                    log.print("RESULT for", p_marker, "\tacc:", acc, "nc_nll:", round(nc_nll, 3), "c_nll:", round(c_nll, 3))
+
+
                     for l in range(1, leng+1):
                         log.print(p_marker, l)
                         accs, c_nlls, nc_nlls, temps = [], [], [], []
