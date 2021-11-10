@@ -199,7 +199,7 @@ def main():
 
 
             run = wandb.init(project='power_laws_deep_ensembles', entity='vetrov_disciples', resume=False)
-            run.name = exp_label + '_' + str(num_model)
+            run.name = log.full_run_name + '_' + str(num_model)
             wandb.config.update(args)
             run.save()
 

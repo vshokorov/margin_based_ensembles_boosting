@@ -19,7 +19,9 @@ class Logger:
         if path is not None:
             self.path = path
         else:
-            self.path = '%s/%s-%s-%s' % (base, fname, name, strftime('%m-%d-%H:%M:%S', time))
+            time_str = strftime('%m-%d-%H:%M:%S', time)
+            self.full_run_name = '%s-%s-%s' % (fname, name, time_str)
+            self.path = '%s/%s-%s-%s' % (base, fname, name, time_str)
 
         if not os.path.exists(base):
             os.makedirs(base)
