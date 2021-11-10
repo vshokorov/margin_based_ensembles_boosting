@@ -18,6 +18,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import logger
+import wandb
 
 def main():
 
@@ -70,9 +71,11 @@ def main():
                         help='lr shedule name (default: standard)')
     parser.add_argument('--shorten_dataset', action='store_true',
                         help='same train set of size N/num_nets for each net')
-
+    parser.add_argument('--initialization', type=str, default='standard',
+                        help='initialization name (default: standard), available also: PATH')
 
     args = parser.parse_args()
+    wandb.config.update(args)
 
     letters = string.ascii_lowercase
     
@@ -169,6 +172,11 @@ def main():
                     loaders["train"].dataset.data = loaders["train"].dataset.data[:5000]
                 
             model = architecture.base(num_classes=num_classes, **architecture.kwargs)
+
+            if args.initialization != 'standart':
+                weights_load_status = model.load_state_dict(torch.load(args.initialization)['model_state'])
+                log.print("Model weights:", weights_load_status)
+
             model.cuda()
 
             optimizer = torch.optim.SGD(
@@ -186,6 +194,13 @@ def main():
                 start_epoch = checkpoint['epoch'] + 1
                 model.load_state_dict(checkpoint['model_state'])
                 optimizer.load_state_dict(checkpoint['optimizer_state'])
+
+
+            wandb.login(relogin=False)
+
+            run = wandb.init(project='power_laws_deep_ensembles', entity='vetrov_disciples', resume=False)
+            run.name = exp_label + '_' + num_model
+            run.save()
 
             has_bn = utils.check_bn(model)
             test_res = {'loss': None, 'accuracy': None, 'nll': None}
@@ -222,14 +237,16 @@ def main():
 
                 time_ep = time.time() - time_ep
                 
+                test_res = utils.test(loaders['test'], model, \
+                                        criterion, regularizer)
+                values = [lr, train_res['loss'], train_res['accuracy'], test_res['nll'],
+                            test_res['accuracy'], ens_acc, ens_nll, time_ep]
+                
+                wandb.log({k:v for (k, _), v in zip(fmt_list, values)})
+
                 if epoch % args.print_freq == 0:
-                    test_res = utils.test(loaders['test'], model, \
-                                          criterion, regularizer)
-                    values = [lr, train_res['loss'], train_res['accuracy'], test_res['nll'],
-                              test_res['accuracy'], ens_acc, ens_nll, time_ep]
                     for (k, _), v in zip(fmt_list, values):
                         log.add(epoch, **{k:v})
-
                     log.iter_info()
                     log.save(silent=True)
 
@@ -240,6 +257,9 @@ def main():
                     model_state=model.state_dict(),
                     optimizer_state=optimizer.state_dict()
                 )
+        
+        run.finish()
+        
     return log.path    
         
 if __name__ == "__main__":
