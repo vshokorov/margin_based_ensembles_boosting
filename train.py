@@ -75,7 +75,6 @@ def main():
                         help='initialization name (default: standard), available also: PATH')
 
     args = parser.parse_args()
-    wandb.config.update(args)
 
     letters = string.ascii_lowercase
     
@@ -200,6 +199,7 @@ def main():
 
             run = wandb.init(project='power_laws_deep_ensembles', entity='vetrov_disciples', resume=False)
             run.name = exp_label + '_' + num_model
+            wandb.config.update(args)
             run.save()
 
             has_bn = utils.check_bn(model)
@@ -259,7 +259,7 @@ def main():
                 )
         
         run.finish()
-        
+
     return log.path    
         
 if __name__ == "__main__":
