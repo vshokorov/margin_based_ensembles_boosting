@@ -242,7 +242,9 @@ def main():
                 values = [lr, train_res['loss'], train_res['accuracy'], test_res['nll'],
                             test_res['accuracy'], ens_acc, ens_nll, time_ep]
                 
-                wandb.log({k:v for (k, _), v in zip(fmt_list, values)})
+                wandb_log_dict = {k:v for (k, _), v in zip(fmt_list, values)}
+                wandb_log_dict['epoch'] = epoch
+                wandb.log(wandb_log_dict)
 
                 if epoch % args.print_freq == 0:
                     for (k, _), v in zip(fmt_list, values):
