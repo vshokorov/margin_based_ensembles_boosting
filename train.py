@@ -198,7 +198,10 @@ def main():
                 optimizer.load_state_dict(checkpoint['optimizer_state'])
 
 
-            run = wandb.init(project='power_laws_deep_ensembles', entity='vetrov_disciples', resume=False)
+            run = wandb.init(project='power_laws_deep_ensembles', 
+                             entity='vetrov_disciples', 
+                             resume=False,
+                             reinit=True)
             run.name = log.full_run_name + '_' + str(num_model)
             wandb.config.update(args)
             run.save()
