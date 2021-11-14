@@ -72,10 +72,7 @@ logdirs = ["logs/oct/train.py-CIFAR10_VGG16/test_it",
 temps = np.arange(0.5, 3.2, 0.05) 
 
 computer = ComputeNLLs(setup=args.setup, regime=args.reg, temps=temps, dir=log.path)
-# log.print(computer.compute_nlls(logdirs, args.model, args.dataset, args.setting, log,\
-#                             plen=1, reverse_order=False, max_std=10**5, max_enslen=10**5))
-computer.compute_nlls(logdirs, args.model, args.dataset, args.setting, log,\
-                      plen=1, reverse_order=False, max_std=10**5, max_enslen=10**5)
-
+log.print(computer.compute_nlls(logdirs, args.model, args.dataset, args.setting, log,\
+                            plen=1, reverse_order=False, max_std=10**5, max_enslen=10**5))
 
 

@@ -200,6 +200,7 @@ def main():
 
             run = wandb.init(project='power_laws_deep_ensembles', 
                              entity='vetrov_disciples', 
+                             group=log.full_run_name,
                              resume=False,
                              reinit=True)
             run.name = log.full_run_name + '_' + str(num_model)
