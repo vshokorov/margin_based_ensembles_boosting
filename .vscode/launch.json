@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Run test by gather_nlls", 
+            "name": "Python: Test by gather_nlls", 
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/gather_nlls.py",
@@ -18,7 +18,7 @@
                     ]
         },
         {
-            "name": "Python: Run training",
+            "name": "Python: Training",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/train.py",
@@ -38,10 +38,10 @@
                 "--dropout=0.5",
                 "--comment=width64",
                 "--seed=25477",
-                "--width=64",
+                "--width=16",
                 "--num-nets=8",
                 "--num-exps=1", //, "--not-save-weights"
-                "--initialization=./base_model_init_CIFAR10_VGG16.cpt"
+                "--initialization=./base_model_init_CIFAR10_VGG16_width64.cpt"
             ]
         }
     ]
