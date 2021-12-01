@@ -71,7 +71,7 @@ def main():
                         help='lr shedule name (default: standard)')
     parser.add_argument('--shorten_dataset', action='store_true',
                         help='same train set of size N/num_nets for each net')
-    parser.add_argument('--initialization', type=str, default='standard',
+    parser.add_argument('--initialization', type=str, default='standart',
                         help='initialization name (default: standard), available also: PATH')
     parser.add_argument('--noisy_data', action='store_true',
                         help='create noisy dataset, p_{idx is noise}=0.2')
