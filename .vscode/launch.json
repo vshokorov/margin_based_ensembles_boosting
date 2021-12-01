@@ -12,7 +12,7 @@
             "console": "integratedTerminal",
             "args": ["--dataset=10",
                      "--model=VGG16",
-                     "--setup=2",
+                     "--setup=1",
                      "--reg=optimal",
                      "--comment=test_run",
                     ]
@@ -41,7 +41,8 @@
                 "--width=16",
                 "--num-nets=8",
                 "--num-exps=1", //, "--not-save-weights"
-                "--initialization=./base_model_init_CIFAR10_VGG16_width64.cpt"
+                "--initialization=./base_model_init_CIFAR10_VGG16_width64.cpt",
+                "--noisy_data"
             ]
         }
     ]

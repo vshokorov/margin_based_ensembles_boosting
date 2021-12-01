@@ -5,7 +5,7 @@ import torchvision.transforms as transforms
 
 
 class bootstrapped_CIFAR10(torchvision.datasets.CIFAR10):
-    def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, load_train: bool=True, train_part: bool=True, **kwargs):
+    def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, load_train: bool=True, train_part: bool=True, noisy_data: bool=False, **kwargs):
         super().__init__(*args, train=load_train, **kwargs)
 
         if train_part:
@@ -22,12 +22,21 @@ class bootstrapped_CIFAR10(torchvision.datasets.CIFAR10):
             self.idxs = torch.randint(len(self.data), (len(self.data),))
         else:
             self.idxs = torch.arange(len(self.data))
+
+        self.noisy_data = noisy_data
+        if noisy_data:
+            self.noised_idxs = torch.randperm(len(self.data))[:int(len(self.data) * 0.2)]
+            self.noised_labels = torch.randint(0, 10, self.noised_idxs.size(0))        
     
     def __getitem__(self, idx):
-        return super().__getitem__(self.idxs[idx])
+        if self.noisy_data and idx in self.noised_idxs:
+            img, _ = super().__getitem__(self.idxs[idx])
+            return img, self.noised_labels[((self.noised_idxs == idx).nonzero(as_tuple=True)[0]).item()]
+        else:
+            return super().__getitem__(self.idxs[idx])
 
 class bootstrapped_CIFAR100(torchvision.datasets.CIFAR100):
-    def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, load_train: bool=True, train_part: bool=True, **kwargs):
+    def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, load_train: bool=True, train_part: bool=True, noisy_data: bool=False, **kwargs):
         super().__init__(*args, train=load_train, **kwargs)
 
         if train_part:
@@ -45,8 +54,17 @@ class bootstrapped_CIFAR100(torchvision.datasets.CIFAR100):
         else:
             self.idxs = torch.arange(len(self.data))
     
+        self.noisy_data = noisy_data
+        if noisy_data:
+            self.noised_idxs = torch.randperm(len(self.data))[:int(len(self.data) * 0.2)]
+            self.noised_labels = torch.randint(0, 10, self.noised_idxs.size(0))        
+    
     def __getitem__(self, idx):
-        return super().__getitem__(self.idxs[idx])
+        if self.noisy_data and idx in self.noised_idxs:
+            img, _ = super().__getitem__(self.idxs[idx])
+            return img, self.noised_labels[((self.noised_idxs == idx).nonzero(as_tuple=True)[0]).item()]
+        else:
+            return super().__getitem__(self.idxs[idx])
 
 class Transforms:
 
@@ -108,7 +126,7 @@ class Transforms:
 
 
 def loaders(dataset, path, batch_size, num_workers, transform_name, use_test=False,
-            use_bootstrapping=False, shuffle_train=True):
+            use_bootstrapping=False, shuffle_train=True, noisy_data = False):
     if dataset == 'CIFAR10':
         ds = bootstrapped_CIFAR10
     elif dataset == 'CIFAR100':
@@ -120,10 +138,10 @@ def loaders(dataset, path, batch_size, num_workers, transform_name, use_test=Fal
 
     if use_test:
         print('You are going to run models on the test set. Are you sure?')
-        train_set = ds(path, test_size=0, load_train=True, train_part=True, use_bootstrapping=use_bootstrapping, download=True, transform=transform.train)
+        train_set = ds(path, test_size=0, load_train=True, train_part=True, use_bootstrapping=use_bootstrapping, download=True, transform=transform.train, noisy_data = noisy_data)
         test_set = ds(path, test_size=0, load_train=False, train_part=True, use_bootstrapping=False, download=False, transform=transform.test)
     else:
-        train_set = ds(path, load_train=True, train_part=True, use_bootstrapping=use_bootstrapping, download=True, transform=transform.train)
+        train_set = ds(path, load_train=True, train_part=True, use_bootstrapping=use_bootstrapping, download=True, transform=transform.train, noisy_data = noisy_data)
         test_set = ds(path, load_train=True, train_part=False, use_bootstrapping=False, download=False, transform=transform.test)
 
     return {

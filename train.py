@@ -73,6 +73,8 @@ def main():
                         help='same train set of size N/num_nets for each net')
     parser.add_argument('--initialization', type=str, default='standard',
                         help='initialization name (default: standard), available also: PATH')
+    parser.add_argument('--noisy_data', action='store_true',
+                        help='create noisy dataset, p_{idx is noise}=0.2')
     parser.add_argument('--wandb_api_key', type=str, default=None,
                         help='wandb api key')
 
@@ -167,6 +169,7 @@ def main():
                     args.transform,
                     args.use_test,
                     args.bootstrapping,
+                    args.noisy_data,
                 )
                 
                 if args.shorten_dataset:
