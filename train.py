@@ -183,7 +183,7 @@ def main():
                 weights_load_status = model.load_state_dict(torch.load(args.initialization)['model_state'])
                 log.print("Model weights:", weights_load_status)
 
-            model.to(device)
+            model = model.to(device)
 
             optimizer = torch.optim.SGD(
                 filter(lambda param: param.requires_grad, model.parameters()),
