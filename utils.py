@@ -100,6 +100,7 @@ def predictions(test_loader, model, device, **kwargs):
     targets = []
     for input, target in test_loader:
         input = input.to(device) # async=True
+        print(model.device, input.device, device)
         output = model(input, **kwargs)
         probs = output #F.softmax(output, dim=1)
         preds.append(probs.cpu().data.numpy())
