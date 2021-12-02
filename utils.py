@@ -42,7 +42,7 @@ def save_checkpoint(dir, epoch, **kwargs):
     torch.save(state, filepath)
 
 
-def train(train_loader, model, optimizer, criterion, regularizer=None, lr_schedule=None):
+def train(train_loader, model, optimizer, criterion, device, regularizer=None, lr_schedule=None):
     loss_sum = 0.0
     correct = 0.0
 
@@ -52,8 +52,8 @@ def train(train_loader, model, optimizer, criterion, regularizer=None, lr_schedu
         if lr_schedule is not None:
             lr = lr_schedule(iter / num_iters)
             adjust_learning_rate(optimizer, lr)
-        input = input.cuda() 
-        target = target.cuda() # async=True
+        input = input.to(device) 
+        target = target.to(device) # async=True
 
         output = model(input)
         loss = criterion(output, target)
@@ -74,9 +74,9 @@ def train(train_loader, model, optimizer, criterion, regularizer=None, lr_schedu
     }
 
 
-def test(test_loader, model, criterion, regularizer=None, **kwargs):
+def test(test_loader, model, criterion, device, regularizer=None, **kwargs):
     model.eval()
-    predictions_logits, targets = predictions(test_loader, model)
+    predictions_logits, targets = predictions(test_loader, model, device)
     nll = criterion(torch.from_numpy(predictions_logits), \
                     torch.from_numpy(targets))
     loss = nll.clone()
@@ -94,12 +94,12 @@ def test(test_loader, model, criterion, regularizer=None, **kwargs):
 
 
 
-def predictions(test_loader, model, **kwargs):
+def predictions(test_loader, model, device, **kwargs):
     model.eval()
     preds = []
     targets = []
     for input, target in test_loader:
-        input = input.cuda() # async=True
+        input = input.to(device) # async=True
         output = model(input, **kwargs)
         probs = output #F.softmax(output, dim=1)
         preds.append(probs.cpu().data.numpy())
@@ -138,7 +138,7 @@ def _set_momenta(module, momenta):
         module.momentum = momenta[module]
 
 
-def update_bn(loader, model, **kwargs):
+def update_bn(loader, model, device, **kwargs):
     if not check_bn(model):
         return
     model.train()
@@ -147,7 +147,7 @@ def update_bn(loader, model, **kwargs):
     model.apply(lambda module: _get_momenta(module, momenta))
     num_samples = 0
     for input, _ in loader:
-        input = input.cuda() # async=True
+        input = input.to(device) # async=True
         batch_size = input.data.size(0)
 
         momentum = batch_size / (num_samples + batch_size)

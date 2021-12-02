@@ -26,12 +26,12 @@ class bootstrapped_CIFAR10(torchvision.datasets.CIFAR10):
         self.noisy_data = noisy_data
         if noisy_data:
             self.noised_idxs = torch.randperm(len(self.data))[:int(len(self.data) * 0.2)]
-            self.noised_labels = torch.randint(0, 10, self.noised_idxs.size(0))        
+            self.noised_labels = torch.randint(0, 10, self.noised_idxs.size())
     
     def __getitem__(self, idx):
         if self.noisy_data and idx in self.noised_idxs:
             img, _ = super().__getitem__(self.idxs[idx])
-            return img, self.noised_labels[((self.noised_idxs == idx).nonzero(as_tuple=True)[0]).item()]
+            return img, self.noised_labels[((self.noised_idxs == idx).nonzero(as_tuple=True)[0]).item()].item()
         else:
             return super().__getitem__(self.idxs[idx])
 
@@ -61,6 +61,7 @@ class bootstrapped_CIFAR100(torchvision.datasets.CIFAR100):
     
     def __getitem__(self, idx):
         if self.noisy_data and idx in self.noised_idxs:
+            print('noisy label')
             img, _ = super().__getitem__(self.idxs[idx])
             return img, self.noised_labels[((self.noised_idxs == idx).nonzero(as_tuple=True)[0]).item()]
         else:

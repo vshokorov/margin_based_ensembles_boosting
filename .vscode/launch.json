@@ -39,9 +39,9 @@
                 "--comment=width64",
                 "--seed=25477",
                 "--width=16",
-                "--num-nets=8",
+                "--num-nets=1",
                 "--num-exps=1", //, "--not-save-weights"
-                "--initialization=./base_model_init_CIFAR10_VGG16_width64.cpt",
+                "--initialization=./base_model_init_CIFAR10_VGG16_width16.cpt",
                 "--noisy_data"
             ]
         }

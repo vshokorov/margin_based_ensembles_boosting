@@ -80,6 +80,7 @@ def main():
 
     args = parser.parse_args()
     wandb.login(key=args.wandb_api_key)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     letters = string.ascii_lowercase
     
@@ -169,7 +170,7 @@ def main():
                     args.transform,
                     args.use_test,
                     args.bootstrapping,
-                    args.noisy_data,
+                    noisy_data=args.noisy_data,
                 )
                 
                 if args.shorten_dataset:
@@ -182,7 +183,7 @@ def main():
                 weights_load_status = model.load_state_dict(torch.load(args.initialization)['model_state'])
                 log.print("Model weights:", weights_load_status)
 
-            model.cuda()
+            model.to(device)
 
             optimizer = torch.optim.SGD(
                 filter(lambda param: param.requires_grad, model.parameters()),
@@ -218,12 +219,12 @@ def main():
                 lr = learning_rate_schedule(args.lr, epoch, args.epochs)
                 utils.adjust_learning_rate(optimizer, lr)
 
-                train_res = utils.train(loaders['train'], model, optimizer, criterion, regularizer)
+                train_res = utils.train(loaders['train'], model, optimizer, criterion, device, regularizer)
                 
                 ens_acc = None
                 ens_nll = None
                 if epoch == args.epochs:
-                    predictions_logits, targets = utils.predictions(loaders['test'], model)
+                    predictions_logits, targets = utils.predictions(loaders['test'], model, device)
                     predictions = F.softmax(torch.from_numpy(predictions_logits), dim=1).numpy()
                     predictions_sum = ensemble_size/(ensemble_size+1) \
                                       * predictions_sum+\
