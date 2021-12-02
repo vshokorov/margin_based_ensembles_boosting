@@ -247,7 +247,7 @@ def main():
                 time_ep = time.time() - time_ep
                 
                 test_res = utils.test(loaders['test'], model, \
-                                        criterion, regularizer)
+                                        criterion, device, regularizer)
                 values = [lr, train_res['loss'], train_res['accuracy'], test_res['nll'],
                             test_res['accuracy'], ens_acc, ens_nll, time_ep]
                 
