@@ -57,7 +57,7 @@ class bootstrapped_CIFAR100(torchvision.datasets.CIFAR100):
         self.noisy_data = noisy_data
         if noisy_data:
             self.noised_idxs = torch.randperm(len(self.data))[:int(len(self.data) * 0.2)]
-            self.noised_labels = torch.randint(0, 10, self.noised_idxs.size(0))        
+            self.noised_labels = torch.randint(0, 100, self.noised_idxs.size(0))        
     
     def __getitem__(self, idx):
         if self.noisy_data and idx in self.noised_idxs:
