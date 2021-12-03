@@ -159,7 +159,8 @@ def main():
         ensemble_size = 0
         predictions_sum = np.zeros((len(loaders['test'].dataset), num_classes))
         
-        for num_model in range(args.num_nets):
+        num_model = 0
+        while num_model < args.num_nets:
             
             if args.bootstrapping:
                 loaders, num_classes = data.loaders(
@@ -269,7 +270,11 @@ def main():
                     optimizer_state=optimizer.state_dict()
                 )
         
-        run.finish()
+        if test_res['accuracy'] >= 20:
+            run.finish()
+            num_model += 1
+        else:
+            run.delete()
 
     return log.path    
         

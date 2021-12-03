@@ -7,7 +7,12 @@ import torchvision.transforms as transforms
 class bootstrapped_CIFAR10(torchvision.datasets.CIFAR10):
     def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, load_train: bool=True, train_part: bool=True, noisy_data: bool=False, **kwargs):
         super().__init__(*args, train=load_train, **kwargs)
-
+        if noisy_data:
+            noised_idxs = torch.randperm(len(self.data))[:int(len(self.data) * 0.2)]
+            self.targets = torch.LongTensor(self.targets)
+            self.targets[noised_idxs] = torch.randint(0, 10, noised_idxs.size())
+            self.targets = self.targets.tolist()
+        
         if train_part:
             print(f"Using train ({len(self.data) - test_size})")
             self.data = self.data if test_size == 0 else self.data[:-test_size]
@@ -22,23 +27,20 @@ class bootstrapped_CIFAR10(torchvision.datasets.CIFAR10):
             self.idxs = torch.randint(len(self.data), (len(self.data),))
         else:
             self.idxs = torch.arange(len(self.data))
-
-        self.noisy_data = noisy_data
-        if noisy_data:
-            self.noised_idxs = torch.randperm(len(self.data))[:int(len(self.data) * 0.2)]
-            self.noised_labels = torch.randint(0, 10, self.noised_idxs.size())
     
     def __getitem__(self, idx):
-        if self.noisy_data and idx in self.noised_idxs:
-            img, _ = super().__getitem__(self.idxs[idx])
-            return img, self.noised_labels[((self.noised_idxs == idx).nonzero(as_tuple=True)[0]).item()].item()
-        else:
-            return super().__getitem__(self.idxs[idx])
+        return super().__getitem__(self.idxs[idx])
 
 class bootstrapped_CIFAR100(torchvision.datasets.CIFAR100):
     def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, load_train: bool=True, train_part: bool=True, noisy_data: bool=False, **kwargs):
         super().__init__(*args, train=load_train, **kwargs)
 
+        if noisy_data:
+            noised_idxs = torch.randperm(len(self.data))[:int(len(self.data) * 0.2)]
+            self.targets = torch.LongTensor(self.targets)
+            self.targets[noised_idxs] = torch.randint(0, 100, noised_idxs.size())
+            self.targets = self.targets.tolist()
+        
         if train_part:
             print(f"Using train ({len(self.data) - test_size})")
             self.data = self.data[:-test_size]
@@ -60,12 +62,7 @@ class bootstrapped_CIFAR100(torchvision.datasets.CIFAR100):
             self.noised_labels = torch.randint(0, 100, self.noised_idxs.size(0))        
     
     def __getitem__(self, idx):
-        if self.noisy_data and idx in self.noised_idxs:
-            print('noisy label')
-            img, _ = super().__getitem__(self.idxs[idx])
-            return img, self.noised_labels[((self.noised_idxs == idx).nonzero(as_tuple=True)[0]).item()]
-        else:
-            return super().__getitem__(self.idxs[idx])
+        return super().__getitem__(self.idxs[idx])
 
 class Transforms:
 
