@@ -55,8 +55,9 @@ def predictions(test_loader, model, **kwargs):
 
 work_dirs = ['/home/tyuzhakov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR10_VGG16/width16_bootstrapped_DS_64_upd-12-11-22:40:46/',
              '/home/tyuzhakov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR10_VGG16/width16_all_DS_64_upd-12-12-13:59:33/', 
-             '/home/tyuzhakov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR10_VGG16/width16_bootstrapped_noisy_DS_upd-12-10-15:30:14/',
-             '/home/tyuzhakov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR10_VGG16/width16_all_noisy_DS_upd-12-10-15:14:18/']
+             #'/home/tyuzhakov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR10_VGG16/width16_bootstrapped_noisy_DS_upd-12-10-15:30:14/',
+             #'/home/tyuzhakov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR10_VGG16/width16_all_noisy_DS_upd-12-10-15:14:18/'
+             ]
 
 for wd in work_dirs:
     try:
