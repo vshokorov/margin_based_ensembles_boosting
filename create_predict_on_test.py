@@ -61,7 +61,7 @@ work_dirs = ['/home/tyuzhakov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR1
 for wd in work_dirs:
     try:
         for num_model in range(100):
-            saved_data = torch.load(wd+'model_run' + str(num_model) + '.cpt', map_location='cpu')
+            saved_data = torch.load(wd+'model_run' + str(num_model) + '.cpt', map_location='cuda')
             model.load_state_dict(saved_data['model_state'])
 
             predictions_logits, targets = predictions(loaders['test'], model)
