@@ -53,8 +53,10 @@ def predictions(test_loader, model, **kwargs):
         targets.append(target.numpy())
     return np.vstack(preds), np.concatenate(targets)
 
-work_dirs = ['drive/MyDrive/Vetrov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR10_VGG16/width16_all_DS-11-16-22:41:56/', 
-             'drive/MyDrive/Vetrov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR10_VGG16/width16_bootstrapped_DS-11-16-22:42:00/']
+work_dirs = ['/home/tyuzhakov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR10_VGG16/width16_bootstrapped_DS_64_upd-12-11-22:40:46/',
+             '/home/tyuzhakov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR10_VGG16/width16_all_DS_64_upd-12-12-13:59:33/', 
+             '/home/tyuzhakov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR10_VGG16/width16_bootstrapped_noisy_DS_upd-12-10-15:30:14/',
+             '/home/tyuzhakov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR10_VGG16/width16_all_noisy_DS_upd-12-10-15:14:18/']
 
 for wd in work_dirs:
     try:
@@ -63,6 +65,6 @@ for wd in work_dirs:
             model.load_state_dict(saved_data['model_state'])
 
             predictions_logits, targets = predictions(loaders['test'], model)
-            np.save(wd + 'predictions_run%d' % num_model, predictions_logits)
+            np.save(wd + 'predictions_run' + str(num_model), predictions_logits)
     except:
         pass
