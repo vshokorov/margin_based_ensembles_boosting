@@ -59,7 +59,7 @@ work_dirs = ['drive/MyDrive/Vetrov/power_laws_deep_ensembles/logs/oct/train.py-C
 for wd in work_dirs:
     try:
         for num_model in range(100):
-            saved_data = torch.load(wd+f'model_run{num_model}.cpt', map_location='cpu')
+            saved_data = torch.load(wd+'model_run' + str(num_model) + '.cpt', map_location='cpu')
             model.load_state_dict(saved_data['model_state'])
 
             predictions_logits, targets = predictions(loaders['test'], model)
