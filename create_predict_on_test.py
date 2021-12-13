@@ -68,5 +68,6 @@ for wd in work_dirs:
 
             predictions_logits, targets = predictions(loaders['test'], model)
             np.save(wd + 'predictions_run' + str(num_model), predictions_logits)
+            print('predictions_run' + str(num_model), 'ready')
     except FileNotFoundError:
         pass
