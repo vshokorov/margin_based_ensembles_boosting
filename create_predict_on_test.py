@@ -63,6 +63,7 @@ for wd in work_dirs:
         for num_model in range(100):
             saved_data = torch.load(wd+'model_run' + str(num_model) + '.cpt', map_location='cuda')
             model.load_state_dict(saved_data['model_state'])
+            model = model.cuda()
 
             predictions_logits, targets = predictions(loaders['test'], model)
             np.save(wd + 'predictions_run' + str(num_model), predictions_logits)
