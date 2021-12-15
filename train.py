@@ -270,11 +270,11 @@ def main():
                     optimizer_state=optimizer.state_dict()
                 )
         
-        if test_res['accuracy'] >= 20:
-            run.finish()
-            num_model += 1
-        else:
-            run.delete()
+            if test_res['accuracy'] >= 20:
+                run.finish()
+                num_model += 1
+            else:
+                run.delete()
 
     return log.path    
         
