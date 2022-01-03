@@ -2,16 +2,15 @@ import os
 import torch
 import torchvision
 import torchvision.transforms as transforms
+import numpy as np
 
 
 class bootstrapped_CIFAR10(torchvision.datasets.CIFAR10):
     def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, load_train: bool=True, train_part: bool=True, noisy_data: bool=False, **kwargs):
         super().__init__(*args, train=load_train, **kwargs)
-        if noisy_data:
-            noised_idxs = torch.randperm(len(self.data))[:int(len(self.data) * 0.2)]
-            self.targets = torch.LongTensor(self.targets)
-            self.targets[noised_idxs] = torch.randint(0, 10, noised_idxs.size())
-            self.targets = self.targets.tolist()
+        if noisy_data and load_train:
+            noised_targets = np.load(os.path.join(args[0], 'noisy_p_02_target.npy')).tolist()
+            self.targets = noised_targets
         
         if train_part:
             print(f"Using train ({len(self.data) - test_size})")
