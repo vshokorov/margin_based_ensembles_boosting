@@ -175,7 +175,7 @@ class ComputeNLLs:
                     # True
                 )
         targets = np.array(loaders["test"].dataset.targets)
-
+    
         ll = 1 if not reverse_order else -1
         if not type(logdirs) == list:
             logdirs = [logdirs]
@@ -192,23 +192,25 @@ class ComputeNLLs:
                     exp_folders = sorted(os.listdir(logdir+"/"+p_folder))
                     if not p in preds:
                         preds[p] = []
-                    for exp_folder in exp_folders:
-                        if not "ipynb" in logdir+"/"+p_folder+"/"+exp_folder and\
-                        not "run" in logdir+"/"+p_folder+"/"+exp_folder and\
-                        not "skipsameseed" in exp_folder:
-                            for f in sorted(os.listdir(logdir+"/"+p_folder+"/"+exp_folder))[::ll]:
-                                if "predictions" in f:
-                                    fn = logdir+"/"+p_folder+"/"+exp_folder+"/"+f
-                                    if self.setup == 1:
-                                        ppp = softmax(np.float64(np.load(fn)))
-                                    else:
-                                        ppp = np.float64(np.load(fn))
-                                    acc = np.equal(np.argmax(ppp, axis=1), targets).mean()
-                                    if acc > 0.15:
-                                        preds[p].append(ppp[:, :, None] if self.setup==1\
-                                                       else ppp)
-                                    else:
-                                        log.print(exp_folder+"/"+f, "is bad!")
+                    # for exp_folder in exp_folders:
+                    exp_folder = p_folder
+                    p_folder = ''
+                    if not "ipynb" in logdir+"/"+p_folder+"/"+exp_folder and\
+                    not "run" in logdir+"/"+p_folder+"/"+exp_folder and\
+                    not "skipsameseed" in exp_folder:
+                        for f in sorted(os.listdir(logdir+"/"+p_folder+"/"+exp_folder))[::ll]:
+                            if "predictions" in f:
+                                fn = logdir+"/"+p_folder+"/"+exp_folder+"/"+f
+                                if self.setup == 1:
+                                    ppp = softmax(np.float64(np.load(fn)))
+                                else:
+                                    ppp = np.float64(np.load(fn))
+                                acc = np.equal(np.argmax(ppp, axis=1), targets).mean()
+                                if acc > 0.15:
+                                    preds[p].append(ppp[:, :, None] if self.setup==1\
+                                                    else ppp)
+                                else:
+                                    log.print(exp_folder+"/"+f, "is bad!")
         self.nlls_c = {}
         self.nlls_nc = {}
         self.accs_global = {}
