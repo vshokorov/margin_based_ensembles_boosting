@@ -155,7 +155,7 @@ def main():
                 
 
 
-        criterion = lambda x: F.cross_entropy(x * args.train_temperature)
+        criterion = lambda x: F.cross_entropy(x / args.train_temperature)
         regularizer = None
 
         ensemble_size = 0
