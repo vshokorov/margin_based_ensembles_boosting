@@ -65,6 +65,8 @@ def main():
                         help='randomize dir')
     parser.add_argument('--dropout', type=float, default=0.5, metavar='WD',
                         help='dropout rate for fully-connected layers')
+    parser.add_argument('--train_temperature', type=float, default=1,
+                        help='temperature in SoftMax')
     parser.add_argument('--not-save-weights', action='store_true',
                         help='not save weights')
     parser.add_argument('--lr-shed', type=str, default='standard', metavar='LRSHED',
@@ -153,7 +155,7 @@ def main():
                 
 
 
-        criterion = F.cross_entropy
+        criterion = lambda x: F.cross_entropy(x * args.train_temperature)
         regularizer = None
 
         ensemble_size = 0
