@@ -67,6 +67,8 @@ def main():
                         help='dropout rate for fully-connected layers')
     parser.add_argument('--train_temperature', type=float, default=1,
                         help='temperature in SoftMax')
+    parser.add_argument('--use_InstanceNorm', action='store_true',
+                        help='required when temperature in SoftMax != 1')
     parser.add_argument('--not-save-weights', action='store_true',
                         help='not save weights')
     parser.add_argument('--lr-shed', type=str, default='standard', metavar='LRSHED',
@@ -128,6 +130,7 @@ def main():
 
         architecture = getattr(models, args.model)()
         architecture.kwargs["k"] = args.width
+        architecture.kwargs["use_InstanceNorm"] = args.use_InstanceNorm
         if "VGG" in args.model or "WideResNet" in args.model:
             architecture.kwargs["p"] = args.dropout
  
