@@ -138,3 +138,32 @@ def eval_eigs(model, dataloader, fisher=True, train_mode=False, nsteps=10, retur
     eigvals, eigvecs = lanczos_tridiag_to_diag(t_mat)
     eigvecs = q_mat @ eigvecs if return_evecs else None
     return eigvals, eigvecs
+
+def eval_trace(model, dataloader, fisher=True, train_mode=False, n_vecs=5):
+    "Returns Fisher or Hessian traces divided by number of parameters."
+    if train_mode:
+        model.train()
+    else:
+        model.eval()
+        
+    kwargs = {}
+    if fisher:
+        Mvp = Fvp
+    else:
+        Mvp = Hvp
+        criterion = nn.CrossEntropyLoss(reduction='sum')
+        kwargs['criterion'] = criterion
+
+    trace = 0.0
+    params = list(model.parameters())
+    N = sum(p.numel() for p in params)
+    
+    for _ in range(n_vecs):
+        vec = torch.randn(N, device=params[0].device)
+        vec /= torch.norm(vec)
+        vec = unflatten_like(vec, params)
+        M_v = eval_mvp(Mvp, vec, params, model, dataloader, **kwargs)
+        for m, v in zip(M_v, vec):
+            trace += (m * v).sum().item()
+    
+    return trace / n_vecs
