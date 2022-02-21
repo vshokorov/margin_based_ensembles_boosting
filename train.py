@@ -155,6 +155,16 @@ def main():
             def learning_rate_schedule(base_lr, epoch, total_epochs):
                 factor = 0.9885 ** epoch
                 return factor * base_lr
+        elif args.lr_shed == "standard_fixed_min":
+            def learning_rate_schedule(base_lr, epoch, total_epochs, min_value = 0.0005):
+                alpha = epoch / total_epochs
+                if alpha <= 0.5:
+                    return base_lr
+                elif alpha <= 0.9:
+                    factor = (alpha - 0.5) / 0.4
+                    return (1 - factor) * base_lr + factor * min_value
+                else:
+                    return min_value
                 
 
 
@@ -275,7 +285,7 @@ def main():
                     optimizer_state=optimizer.state_dict()
                 )
         
-            if test_res['accuracy'] >= 20:
+            if test_res['accuracy'] >= 50:
                 run.finish()
                 num_model += 1
             else:
