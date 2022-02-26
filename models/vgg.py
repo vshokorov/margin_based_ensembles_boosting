@@ -77,6 +77,7 @@ class VGGBase(nn.Module):
             nn.Linear(8*k, num_classes)
         )
         if use_InstanceNorm:
+            self.temperature = 1
             self.normalization = nn.InstanceNorm1d(num_classes)
 
         for m in self.modules():
@@ -96,7 +97,7 @@ class VGGBase(nn.Module):
         x = self.classifier(x)
         if self.use_InstanceNorm:
             x = x.view(x.size(0), 1, -1)
-            x = self.normalization(x)
+            x = self.normalization(x) / self.temperature
             x = x.view(x.size(0), -1)
 
         return x

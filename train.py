@@ -168,7 +168,7 @@ def main():
                 
 
 
-        criterion = lambda x, y: F.cross_entropy(x / args.train_temperature, y)
+        criterion = F.cross_entropy
         regularizer = None
 
         ensemble_size = 0
@@ -194,6 +194,7 @@ def main():
                     loaders["train"].dataset.data = loaders["train"].dataset.data[:5000]
                 
             model = architecture.base(num_classes=num_classes, **architecture.kwargs)
+            model.temperature = args.train_temperature
 
             if args.initialization != 'standart':
                 weights_load_status = model.load_state_dict(torch.load(args.initialization)['model_state'])
