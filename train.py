@@ -79,6 +79,8 @@ def main():
                         help='initialization name (default: standard), available also: PATH')
     parser.add_argument('--noisy_data', action='store_true',
                         help='create noisy dataset, p_{idx is noise}=0.2')
+    parser.add_argument('--gap_size', type=float, default=None,
+                        help='additional gap in logits')
     parser.add_argument('--wandb_api_key', type=str, default=None,
                         help='wandb api key')
 
@@ -166,9 +168,13 @@ def main():
                 else:
                     return min_value
                 
+        if args.gap_size is None:
+            criterion = F.cross_entropy
+        else:
+            def criterion(x, y):
+                x[torch.arange(x.size(0)), y] -= args.gap_size
+                return F.cross_entropy(x, y)
 
-
-        criterion = F.cross_entropy
         regularizer = None
 
         ensemble_size = 0
