@@ -5,6 +5,7 @@
 
 import math
 import torch.nn as nn
+import torch
 import numpy as np
 
 import curves
@@ -58,14 +59,13 @@ def make_layers(config, batch_norm=False, fix_points=None):
 
 
 class VGGBase(nn.Module):
-    def __init__(self, num_classes, depth=16, batch_norm=False, k=64, p=0.5, use_InstanceNorm=False):
+    def __init__(self, num_classes, depth=16, batch_norm=False, k=64, p=0.5, norm_type=None):
         super(VGGBase, self).__init__()
         config = get_config(depth, k=k)
         layer_blocks, activation_blocks, poolings = make_layers(config, batch_norm)
         self.layer_blocks = layer_blocks
         self.activation_blocks = activation_blocks
         self.poolings = poolings
-        self.use_InstanceNorm = use_InstanceNorm
 
         self.classifier = nn.Sequential(
             nn.Dropout(p),
@@ -76,9 +76,27 @@ class VGGBase(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(8*k, num_classes)
         )
-        if use_InstanceNorm:
-            self.temperature = 1
-            self.normalization = nn.InstanceNorm1d(num_classes)
+        if norm_type == 'InstanceNorm':
+            def norm(x):
+                x = x.view(x.size(0), 1, -1)
+                x = nn.functional.instance_norm(x)
+                x = x.view(x.size(0), -1)
+                return x
+        elif norm_type == 'L2':
+            def norm(x):
+                return x / torch.norm(x, p = 2, dim=1, keepdim=True)
+        elif norm_type == 'L1':
+            def norm(x):
+                return x / torch.norm(x, p = 1, dim=1, keepdim=True)
+        elif norm_type == 'L_inf':
+            def norm(x):
+                return x / torch.norm(x, p = torch.inf, dim=1, keepdim=True)
+        elif norm_type is None:
+            def norm(x):
+                return x
+        else:
+            raise NotImplementedError()
+        self.logit_norm = norm
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -95,10 +113,7 @@ class VGGBase(nn.Module):
             x = pooling(x)
         x = x.view(x.size(0), -1)
         x = self.classifier(x)
-        if self.use_InstanceNorm:
-            x = x.view(x.size(0), 1, -1)
-            x = self.normalization(x) / self.temperature
-            x = x.view(x.size(0), -1)
+        x = self.logit_norm(x)
 
         return x
 

@@ -67,8 +67,8 @@ def main():
                         help='dropout rate for fully-connected layers')
     parser.add_argument('--train_temperature', type=float, default=1,
                         help='temperature in SoftMax')
-    parser.add_argument('--use_InstanceNorm', action='store_true',
-                        help='required when temperature in SoftMax != 1')
+    parser.add_argument('--logit_norm_type', type=str, default=None,
+                        help='type of logit normalization. InstanceNorm/L2/L1/L_inf')
     parser.add_argument('--not-save-weights', action='store_true',
                         help='not save weights')
     parser.add_argument('--lr-shed', type=str, default='standard', metavar='LRSHED',
@@ -132,41 +132,11 @@ def main():
 
         architecture = getattr(models, args.model)()
         architecture.kwargs["k"] = args.width
-        architecture.kwargs["use_InstanceNorm"] = args.use_InstanceNorm
+        architecture.kwargs["norm_type"] = args.logit_norm_type
         if "VGG" in args.model or "WideResNet" in args.model:
             architecture.kwargs["p"] = args.dropout
  
-        if args.lr_shed == "standard":
-            def learning_rate_schedule(base_lr, epoch, total_epochs):
-                alpha = epoch / total_epochs
-                if alpha <= 0.5:
-                    factor = 1.0
-                elif alpha <= 0.9:
-                    factor = 1.0 - (alpha - 0.5) / 0.4 * 0.99
-                else:
-                    factor = 0.01
-                return factor * base_lr
-        elif args.lr_shed == "stair":
-            def learning_rate_schedule(base_lr, epoch, total_epochs):
-                if epoch < total_epochs / 2:
-                    factor = 1.0
-                else:
-                    factor = 0.1
-                return factor * base_lr
-        elif args.lr_shed == "exp":
-            def learning_rate_schedule(base_lr, epoch, total_epochs):
-                factor = 0.9885 ** epoch
-                return factor * base_lr
-        elif args.lr_shed == "standard_fixed_min":
-            def learning_rate_schedule(base_lr, epoch, total_epochs, min_value = 0.0005):
-                alpha = epoch / total_epochs
-                if alpha <= 0.5:
-                    return base_lr
-                elif alpha <= 0.9:
-                    factor = (alpha - 0.5) / 0.4
-                    return (1 - factor) * base_lr + factor * min_value
-                else:
-                    return min_value
+        learning_rate_schedule = utils.lr_schedule(args.lr_shed)
                 
         if args.gap_size is None:
             criterion = F.cross_entropy
@@ -177,8 +147,8 @@ def main():
 
         regularizer = None
 
-        ensemble_size = 0
-        predictions_sum = np.zeros((len(loaders['test'].dataset), num_classes))
+        # ensemble_size = 0
+        # predictions_sum = np.zeros((len(loaders['test'].dataset), num_classes))
         
         num_model = 0
         while num_model < args.num_nets:
@@ -246,22 +216,21 @@ def main():
                 
                 ens_acc = None
                 ens_nll = None
-                if epoch == args.epochs:
-                    predictions_logits, targets = utils.predictions(loaders['test'], model, device)
-                    predictions = F.softmax(torch.from_numpy(predictions_logits), dim=1).numpy()
-                    predictions_sum = ensemble_size/(ensemble_size+1) \
-                                      * predictions_sum+\
-                                      predictions/(ensemble_size+1)
-                    ensemble_size += 1
-                    ens_acc = 100.0 * np.mean(np.argmax(predictions_sum, axis=1) == targets)
-                    predictions_sum_log = np.log(predictions_sum+1e-15)
-                    ens_nll = -metrics.metrics_kfold(predictions_sum_log, targets, n_splits=2, n_runs=5,\
-                                                    verbose=False, temp_scale=True)["ll"]
-                    np.save(log.path+'/predictions_run%d' % num_model, predictions_logits)
+                # if epoch == args.epochs:
+                #     predictions_logits, targets = utils.predictions(loaders['test'], model, device)
+                #     predictions = F.softmax(torch.from_numpy(predictions_logits), dim=1).numpy()
+                #     predictions_sum = ensemble_size/(ensemble_size+1) \
+                #                       * predictions_sum+\
+                #                       predictions/(ensemble_size+1)
+                #     ensemble_size += 1
+                #     ens_acc = 100.0 * np.mean(np.argmax(predictions_sum, axis=1) == targets)
+                #     predictions_sum_log = np.log(predictions_sum+1e-15)
+                #     ens_nll = -metrics.metrics_kfold(predictions_sum_log, targets, n_splits=2, n_runs=5,\
+                #                                     verbose=False, temp_scale=True)["ll"]
 
                 if not args.not_save_weights and epoch % args.save_freq == 0:
                     utils.save_checkpoint(
-                        log.get_checkpoint(epoch),
+                        log.path+f'/model_run{num_model}_ep{epoch}.cpt',
                         epoch,
                         model_state=model.state_dict(),
                         optimizer_state=optimizer.state_dict()

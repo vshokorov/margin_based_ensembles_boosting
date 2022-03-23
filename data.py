@@ -6,7 +6,9 @@ import numpy as np
 
 
 class bootstrapped_CIFAR10(torchvision.datasets.CIFAR10):
-    def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, load_train: bool=True, train_part: bool=True, noisy_data: bool=False, **kwargs):
+    def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, 
+                 load_train: bool=True, train_part: bool=True, noisy_data: bool=False, 
+                 **kwargs):
         super().__init__(*args, train=load_train, **kwargs)
         if noisy_data and load_train:
             noised_targets = np.load(os.path.join(args[0], 'noisy_p_02_target.npy')).tolist()
@@ -31,8 +33,12 @@ class bootstrapped_CIFAR10(torchvision.datasets.CIFAR10):
         return super().__getitem__(self.idxs[idx])
 
 class bootstrapped_CIFAR100(torchvision.datasets.CIFAR100):
-    def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, load_train: bool=True, train_part: bool=True, noisy_data: bool=False, **kwargs):
+    def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, 
+                 load_train: bool=True, train_part: bool=True, noisy_data: bool=False, 
+                 **kwargs):
         super().__init__(*args, train=load_train, **kwargs)
+
+        raise DeprecationWarning()
 
         if noisy_data:
             noised_idxs = torch.randperm(len(self.data))[:int(len(self.data) * 0.2)]
@@ -135,11 +141,35 @@ def loaders(dataset, path, batch_size, num_workers, transform_name, use_test=Fal
 
     if use_test:
         print('You are going to run models on the test set. Are you sure?')
-        train_set = ds(path, test_size=0, load_train=True, train_part=True, use_bootstrapping=use_bootstrapping, download=True, transform=transform.train, noisy_data = noisy_data)
-        test_set = ds(path, test_size=0, load_train=False, train_part=True, use_bootstrapping=False, download=False, transform=transform.test)
+        train_set = ds(path, 
+                       test_size=0, 
+                       load_train=True, 
+                       train_part=True, 
+                       use_bootstrapping=use_bootstrapping, 
+                       download=True, 
+                       transform=transform.train, 
+                       noisy_data = noisy_data)
+        test_set = ds(path, 
+                      test_size=0, 
+                      load_train=False, 
+                      train_part=True, 
+                      use_bootstrapping=False, 
+                      download=False, 
+                      transform=transform.test)
     else:
-        train_set = ds(path, load_train=True, train_part=True, use_bootstrapping=use_bootstrapping, download=True, transform=transform.train, noisy_data = noisy_data)
-        test_set = ds(path, load_train=True, train_part=False, use_bootstrapping=False, download=False, transform=transform.test)
+        train_set = ds(path, 
+                       load_train=True, 
+                       train_part=True, 
+                       use_bootstrapping=use_bootstrapping, 
+                       download=True, 
+                       transform=transform.train, 
+                       noisy_data = noisy_data)
+        test_set = ds(path, 
+                      load_train=True, 
+                      train_part=False, 
+                      use_bootstrapping=False, 
+                      download=False, 
+                      transform=transform.test)
 
     return {
                'train': torch.utils.data.DataLoader(

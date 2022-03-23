@@ -158,3 +158,37 @@ def update_bn(loader, model, device, **kwargs):
         num_samples += batch_size
 
     model.apply(lambda module: _set_momenta(module, momenta))
+
+def lr_schedule(lr_shed_type):
+        if lr_shed_type == "standard":
+            def learning_rate_schedule(base_lr, epoch, total_epochs):
+                alpha = epoch / total_epochs
+                if alpha <= 0.5:
+                    factor = 1.0
+                elif alpha <= 0.9:
+                    factor = 1.0 - (alpha - 0.5) / 0.4 * 0.99
+                else:
+                    factor = 0.01
+                return factor * base_lr
+        elif lr_shed_type == "stair":
+            def learning_rate_schedule(base_lr, epoch, total_epochs):
+                if epoch < total_epochs / 2:
+                    factor = 1.0
+                else:
+                    factor = 0.1
+                return factor * base_lr
+        elif lr_shed_type == "exp":
+            def learning_rate_schedule(base_lr, epoch, total_epochs):
+                factor = 0.9885 ** epoch
+                return factor * base_lr
+        elif lr_shed_type == "standard_fixed_min":
+            def learning_rate_schedule(base_lr, epoch, total_epochs, min_value = 0.0005):
+                alpha = epoch / total_epochs
+                if alpha <= 0.5:
+                    return base_lr
+                elif alpha <= 0.9:
+                    factor = (alpha - 0.5) / 0.4
+                    return (1 - factor) * base_lr + factor * min_value
+                else:
+                    return min_value
+        return learning_rate_schedule
