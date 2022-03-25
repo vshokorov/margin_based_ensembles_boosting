@@ -77,26 +77,27 @@ class VGGBase(nn.Module):
             nn.Linear(8*k, num_classes)
         )
         if norm_type == 'InstanceNorm':
-            def norm(x):
+            def norm(x, t=1):
                 x = x.view(x.size(0), 1, -1)
-                x = nn.functional.instance_norm(x)
+                x = nn.functional.instance_norm(x) / t
                 x = x.view(x.size(0), -1)
                 return x
         elif norm_type == 'L2':
-            def norm(x):
-                return x / torch.norm(x, p = 2, dim=1, keepdim=True)
+            def norm(x, t=1):
+                return x / torch.norm(x, p = 2, dim=1, keepdim=True) / t
         elif norm_type == 'L1':
-            def norm(x):
-                return x / torch.norm(x, p = 1, dim=1, keepdim=True)
+            def norm(x, t=1):
+                return x / torch.norm(x, p = 1, dim=1, keepdim=True) / t
         elif norm_type == 'L_inf':
-            def norm(x):
-                return x / torch.norm(x, p = torch.inf, dim=1, keepdim=True)
+            def norm(x, t=1):
+                return x / torch.norm(x, p = torch.inf, dim=1, keepdim=True) / t
         elif norm_type is None:
-            def norm(x):
-                return x
+            def norm(x, t=1):
+                return x / t
         else:
             raise NotImplementedError()
         self.logit_norm = norm
+        self.temperature = 1
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -113,7 +114,7 @@ class VGGBase(nn.Module):
             x = pooling(x)
         x = x.view(x.size(0), -1)
         x = self.classifier(x)
-        x = self.logit_norm(x)
+        x = self.logit_norm(x, self.temperature)
 
         return x
 
