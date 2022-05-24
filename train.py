@@ -1,7 +1,5 @@
 import argparse
-import os
 import sys
-import tabulate
 import string
 import time
 import torch
@@ -11,7 +9,6 @@ import numpy as np
 import data
 import models
 import utils
-import metrics
 import random
 
 import warnings
@@ -19,6 +16,18 @@ warnings.filterwarnings("ignore")
 
 import logger
 import wandb
+
+MAX_FAIL_RUN_NUMBER = 2
+
+def none_or_int(value):
+    if value == 'None':
+        return None
+    return int(value)
+
+def none_or_float(value):
+    if value == 'None':
+        return None
+    return float(value)
 
 def main():
 
@@ -43,6 +52,7 @@ def main():
     parser.add_argument('--model', type=str, default=None, metavar='MODEL', required=True,
                         help='model name (default: None)')
     parser.add_argument('--comment', type=str, default="", metavar='T', help='comment to the experiment')
+    parser.add_argument('--wandb_group', type=str, default=None, help='wandb group of expirement')
     parser.add_argument('--resume', type=str, default=None, metavar='CKPT',
                         help='checkpoint to resume training from (default: None)')
     parser.add_argument('--epochs', type=int, default=200, metavar='N',
@@ -53,11 +63,15 @@ def main():
                         help='print frequency (default: 1)')
     parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
                         help='initial learning rate (default: 0.01)')
+    parser.add_argument('--optimizer', type=str, default='SGD',
+                        help='optimizer type')
+    parser.add_argument('--grad_clip', type=none_or_float, default='None',
+                        help='optimizer type')
     parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                         help='SGD momentum (default: 0.9)')
     parser.add_argument('--wd', type=float, default=1e-4, metavar='WD',
                         help='weight decay (default: 1e-4)')
-    parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
+    parser.add_argument('--seed', type=none_or_int, default=1, metavar='S', help='random seed (default: 1)')
     parser.add_argument('--width', type=int, default=64, metavar='N', help='width of 1 network')
     parser.add_argument('--num-nets', type=int, default=8, metavar='N', help='number of networks in ensemble')
     parser.add_argument('--num-exps', type=int, default=3, metavar='N', help='number of times for executung the whole script')
@@ -99,8 +113,9 @@ def main():
     
     np.random.seed(args.seed)
     
+    attempt_number = 0
     for exp_num in range(args.num_exps):
-        args.seed = np.random.randint(1000)
+
         fmt_list = [('lr', "3.4e"), ('tr_loss', "3.3e"), ('tr_acc', '9.4f'), \
                     ('te_nll', "3.3e"), ('te_acc', '9.4f'), ('ens_acc', '9.4f'),   
                     ('ens_nll', '3.3e'), ('time', ".3f")]
@@ -113,8 +128,13 @@ def main():
         torch.backends.cudnn.benchmark = True
         
         
-        torch.manual_seed(args.seed)
-        torch.cuda.manual_seed(args.seed)
+        if args.seed is not None: 
+            args.seed = np.random.randint(1000)
+            torch.manual_seed(args.seed)
+            torch.cuda.manual_seed(args.seed)
+        else:
+            torch.manual_seed(25477)
+            torch.cuda.manual_seed(25477)
 
         loaders, num_classes = data.loaders(
             args.dataset,
@@ -131,12 +151,10 @@ def main():
             loaders["train"].dataset.data = loaders["train"].dataset.data[:5000]
 
         architecture = getattr(models, args.model)()
-        architecture.kwargs["k"] = args.width
-        architecture.kwargs["norm_type"] = args.logit_norm_type
         if "VGG" in args.model or "WideResNet" in args.model:
+            architecture.kwargs["k"] = args.width
+            architecture.kwargs["norm_type"] = args.logit_norm_type
             architecture.kwargs["p"] = args.dropout
- 
-        learning_rate_schedule = utils.lr_schedule(args.lr_shed)
                 
         if args.gap_size is None:
             criterion = F.cross_entropy
@@ -178,13 +196,17 @@ def main():
 
             model = model.to(device)
 
-            optimizer = torch.optim.SGD(
-                filter(lambda param: param.requires_grad, model.parameters()),
-                lr=args.lr,
-                momentum=args.momentum,
-                weight_decay=args.wd
+            optimizer = utils.optimizer_lrscheduled(
+                {'params': filter(lambda param: param.requires_grad, model.parameters()),
+                 'lr': args.lr,
+                 'momentum':args.momentum,
+                 'weight_decay':args.wd},
+                args.optimizer,
+                args.lr_shed,
+                {'max_lr': args.lr,
+                 'epochs': args.epochs,
+                 'steps_per_epoch': len(loaders['train'])}
             )
-
 
             start_epoch = 1
             if args.resume is not None:
@@ -194,13 +216,14 @@ def main():
                 model.load_state_dict(checkpoint['model_state'])
                 optimizer.load_state_dict(checkpoint['optimizer_state'])
 
+            wandb_group = log.full_run_name if args.wandb_group is None else args.wandb_group
 
             run = wandb.init(project='power_laws_deep_ensembles', 
                              entity='vetrov_disciples', 
-                             group=log.full_run_name,
+                             group=wandb_group,
+                             name=log.full_run_name + '_' + str(num_model),
                              resume=False,
                              reinit=True)
-            run.name = log.full_run_name + '_' + str(num_model)
             wandb.config.update(args)
             run.save()
 
@@ -209,13 +232,10 @@ def main():
             for epoch in range(start_epoch, args.epochs + 1):
                 time_ep = time.time()
 
-                lr = learning_rate_schedule(args.lr, epoch, args.epochs)
-                utils.adjust_learning_rate(optimizer, lr)
-
                 train_res = utils.train(loaders['train'], model, optimizer, criterion, device, regularizer)
                 
-                ens_acc = None
-                ens_nll = None
+                ens_acc = np.NaN
+                ens_nll = np.NaN
                 # if epoch == args.epochs:
                 #     predictions_logits, targets = utils.predictions(loaders['test'], model, device)
                 #     predictions = F.softmax(torch.from_numpy(predictions_logits), dim=1).numpy()
@@ -240,6 +260,7 @@ def main():
                 
                 test_res = utils.test(loaders['test'], model, \
                                         criterion, device, regularizer)
+                lr = optimizer.get_lr()
                 values = [lr, train_res['loss'], train_res['accuracy'], test_res['nll'],
                             test_res['accuracy'], ens_acc, ens_nll, time_ep]
                 
@@ -260,12 +281,15 @@ def main():
                     model_state=model.state_dict(),
                     optimizer_state=optimizer.state_dict()
                 )
-        
-            if test_res['accuracy'] >= 50:
-                run.finish()
+
+            run.finish()
+            if test_res['accuracy'] >= 20:
                 num_model += 1
+                attempt_number = 0
             else:
-                run.delete()
+                attempt_number += 1
+                if attempt_number == MAX_FAIL_RUN_NUMBER:
+                    num_model += 1
 
     return log.path    
         

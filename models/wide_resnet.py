@@ -71,7 +71,7 @@ class WideBasicCurve(nn.Module):
 
 
 class WideResNetBase(nn.Module):
-    def __init__(self, num_classes, depth=28, k=160, p=0.):
+    def __init__(self, num_classes, depth=28, k=160, p=0., **kwargs):
         super(WideResNetBase, self).__init__()
         self.in_planes = k
 

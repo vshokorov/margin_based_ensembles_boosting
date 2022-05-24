@@ -152,7 +152,7 @@ def eval_trace(model, dataloader, fisher=True, train_mode=False, n_vecs=5):
     else:
         Mvp = Hvp
         criterion = nn.CrossEntropyLoss(reduction='sum')
-        kwargs['criterion'] = criterion
+        kwargs['criterion'] = criterion 
 
     trace = 0.0
     params = list(model.parameters())

@@ -3,44 +3,29 @@ import numpy as np
 import models
 import data
 import utils
+from tqdm import tqdm
 from matplotlib import pyplot as plt
+import os
+from eval_eigs import eval_eigs, eval_trace
+import re
+import pandas as pd
 
+import wandb
+from tqdm import tqdm
+from io import StringIO 
+import sys
 
-"--dir=logs",
-data_path="./data/"
-dataset="CIFAR10"
-transform="VGG"
-model="VGG16"
-batch_size=128
-num_workers=4
-use_test=False
-"--save_freq=200",
-"--print_freq=5",
-"--epochs=200",
-"--wd=0.001",
-"--lr=0.05",
-dropout=0.5
-"--comment=width64",
-"--seed=25477",
-width=64
-"--num-nets=8",
-"--num-exps=5"
+class Capturing(list):
+    def __enter__(self):
+        self._stdout = sys.stdout
+        sys.stdout = self._stringio = StringIO()
+        return self
+    def __exit__(self, *args):
+        self.extend(self._stringio.getvalue().splitlines())
+        del self._stringio    # free up some memory
+        sys.stdout = self._stdout
 
-loaders, num_classes = data.loaders(dataset,
-                                    data_path,
-                                    batch_size,
-                                    num_workers,
-                                    transform,
-                                    use_test
-                                    )
-
-architecture = getattr(models, model)()
-architecture.kwargs["k"] = width
-if "VGG" in model or "WideResNet" in model:
-    architecture.kwargs["p"] = dropout
-model = architecture.base(num_classes=num_classes, **architecture.kwargs)
-
-
+@torch.no_grad()
 def predictions(test_loader, model, **kwargs):
     model.eval()
     preds = []
@@ -53,21 +38,66 @@ def predictions(test_loader, model, **kwargs):
         targets.append(target.numpy())
     return np.vstack(preds), np.concatenate(targets)
 
-work_dirs = ['/home/tyuzhakov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR10_VGG16/width16_bootstrapped_DS_64_upd-12-11-22:40:46/',
-             '/home/tyuzhakov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR10_VGG16/width16_all_DS_64_upd-12-12-13:59:33/', 
-             #'/home/tyuzhakov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR10_VGG16/width16_bootstrapped_noisy_DS_upd-12-10-15:30:14/',
-             #'/home/tyuzhakov/power_laws_deep_ensembles/logs/oct/train.py-CIFAR10_VGG16/width16_all_noisy_DS_upd-12-10-15:14:18/'
-             ]
+api = wandb.Api(timeout=19)
+entity, project = "vetrov_disciples", "power_laws_deep_ensembles"  # set to your entity and project 
+runs = api.runs(entity + "/" + project) 
 
-for wd in work_dirs:
-    try:
-        for num_model in range(100):
-            saved_data = torch.load(wd+'model_run' + str(num_model) + '.cpt', map_location='cuda')
+run_names = []
+run_configs = {}
+for r in runs:
+    if len(r.config) > 0 and r.state == 'finished':
+        run_names.append(r.name)
+        run_configs[r.name] = r.config
+        
+work_dirs = list(set(map(lambda x: 'logs/oct/' + x[:x.find('_', -4)] + '/', run_names)))
+
+for work_dir in tqdm(work_dirs):
+    if not os.path.exists(work_dir):
+        print(f'[ERROR] No such directory {work_dir}')
+        continue
+    
+    for num_model in range(len(list(filter(lambda x: 'cpt' in x, os.listdir(work_dir))))):
+        
+        try:
+            if (os.path.exists(work_dir + 'predictions_test_run%d.npy' % num_model) and
+                os.path.exists(work_dir + 'predictions_train_run%d.npy' % num_model)):
+                continue
+
+            if not os.path.exists(work_dir + f'model_run{num_model}.cpt'):
+                continue
+                
+            c = run_configs[work_dir.replace('logs/oct/', '')[:-1] + '_' + str(num_model)]
+            with Capturing():
+                loaders, num_classes = data.loaders(c['dataset'],
+                                        c['data_path'],
+                                        c['batch_size'],
+                                        c['num_workers'],
+                                        c['transform'] if 'noDA' in c['transform'] else c['transform'] + '_noDA',
+                                        use_test=False,
+                                        shuffle_train=False
+                                        )
+            
+            architecture = getattr(models, c['model'])()
+            if 'VGG' in c['model']:
+                architecture.kwargs["k"] = c['width']
+            # architecture.kwargs["use_InstanceNorm"] = use_InstanceNorm
+            if "VGG" in c['model'] or "WideResNet" in c['model']:
+                architecture.kwargs["p"] = c['dropout']
+            model = architecture.base(num_classes=num_classes, **architecture.kwargs).cuda()
+            _ = model.eval()
+
+            saved_data = torch.load(work_dir+f'model_run{num_model}.cpt', map_location='cpu')
             model.load_state_dict(saved_data['model_state'])
-            model = model.cuda()
-
-            predictions_logits, targets = predictions(loaders['test'], model)
-            np.save(wd + 'predictions_run' + str(num_model), predictions_logits)
-            print('predictions_run' + str(num_model), 'ready')
-    except FileNotFoundError:
-        pass
+            
+            if not os.path.exists(work_dir + 'predictions_test_run%d.npy' % num_model):
+                predictions_logits, targets = predictions(loaders['test'], model)
+                np.save(work_dir + 'predictions_test_run%d' % num_model, predictions_logits)
+            
+            if not os.path.exists(work_dir + 'predictions_train_run%d.npy' % num_model):
+                predictions_logits, targets = predictions(loaders['train'], model)
+                np.save(work_dir + 'predictions_train_run%d' % num_model, predictions_logits)
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
+        except BaseException as ex:
+            print(ex, f'in {work_dir}, {num_model}')
+            # print(f'Something wrong with {work_dir}, {num_model}')

@@ -29,7 +29,7 @@
                 "--dataset=CIFAR10", //"--use_test", 
                 "--bootstrapping",
                 "--transform=VGG",
-                "--model=VGG16",
+                "--model=VGG16_dict",
                 "--save_freq=200",
                 "--print_freq=5",
                 "--epochs=200",
@@ -37,11 +37,10 @@
                 "--lr=0.05",
                 "--dropout=0.5",
                 "--comment=width64",
-                "--seed=25477",
+                "--seed=None", //25477
                 "--width=16",
                 "--num-nets=1",
-                "--num-exps=1", //, "--not-save-weights"
-                "--initialization=./base_model_init_CIFAR10_VGG16_width16.cpt",
+                "--num-exps=1", //, "--not-save-weights" "--initialization=./base_model_init_CIFAR10_VGG16_width16.cpt",
                 "--noisy_data"
             ]
         }

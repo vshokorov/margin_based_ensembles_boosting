@@ -4,13 +4,14 @@
 """
 
 import math
+from turtle import forward
 import torch.nn as nn
 import torch
 import numpy as np
 
 import curves
 
-__all__ = ['VGG16', 'VGG16BN', 'VGG19', 'VGG19BN', 'get_size', 'compute_k']
+__all__ = ['VGG16', 'VGG16BN', 'VGG19', 'VGG19BN', 'get_size', 'compute_k', 'VGG16_phi_r', 'VGG16_dict', 'VGG16_dict_big']
 
 def get_size(k, num_classes=100):
     return (3*9+2+2*2+4*3+8*8+8*num_classes)*k+\
@@ -119,6 +120,37 @@ class VGGBase(nn.Module):
         return x
 
 
+class VGGBase_dict(VGGBase):
+    def __init__(self, big_dim, **args):
+        super(VGGBase_dict, self).__init__(**args)
+        
+        if big_dim:
+            hidden_dim = self.classifier[-1].in_features
+            self.classifier = self.classifier[:-2]
+            self.logit_norm = Dict_projector(hidden_dim)
+        else:
+            self.logit_norm = Dict_projector(10)
+
+    # def forward(self, x):
+    #     x = super().forward(x)
+    #     return x
+
+class VGGBase_phi_r(VGGBase):
+    def __init__(self, **args):
+        super(VGGBase_phi_r, self).__init__(**args)
+        self.classifier = self.classifier[:-2]
+
+        self.lphi = nn.Linear(self.classifier[-1].out_features, 10)
+        self.lr = nn.Linear(self.classifier[-1].out_features, 1)
+        
+    def forward(self, x):
+        x = super(VGGBase_phi_r, self).forward(x)
+        phi = self.lphi(x)
+        phi = phi.div(torch.norm(phi, dim=1, keepdim=True))
+        r = self.lr(x)
+        return phi * r
+
+
 class VGGCurve(nn.Module):
     def __init__(self, num_classes, fix_points, depth=16, k=64, batch_norm=False):
         super(VGGCurve, self).__init__()
@@ -163,9 +195,21 @@ class VGGCurve(nn.Module):
         x = self.relu2(x)
 
         x = self.fc3(x, coeffs_t)
+        
+        raise NotImplementedError
 
         return x
 
+class Dict_projector(nn.Module):
+    def __init__(self, hidden_dim):
+        super(Dict_projector, self).__init__()
+
+        self.kernel = nn.Parameter(nn.init.xavier_uniform_(torch.Tensor(hidden_dim, 10)))
+    
+    def forward(self, x, t=1):
+        x = x.div(torch.norm(x, dim=1, keepdim=True))
+        norm_kernel = self.kernel.div(torch.norm(self.kernel, dim=0, keepdim=True))
+        return torch.mm(x, norm_kernel) / t
 
 class VGG16:
     def __init__(self):
@@ -174,6 +218,35 @@ class VGG16:
         self.kwargs = {
             'depth': 16,
             'batch_norm': False
+        }
+
+class VGG16_phi_r:
+    def __init__(self):
+        self.base = VGGBase_phi_r
+        self.curve = VGGCurve
+        self.kwargs = {
+            'depth': 16,
+            'batch_norm': False
+        }
+
+class VGG16_dict:
+    def __init__(self):
+        self.base = VGGBase_dict
+        self.curve = VGGCurve
+        self.kwargs = {
+            'depth': 16,
+            'batch_norm': False,
+            'big_dim' : False
+        }
+
+class VGG16_dict_big:
+    def __init__(self):
+        self.base = VGGBase_dict
+        self.curve = VGGCurve
+        self.kwargs = {
+            'depth': 16,
+            'batch_norm': False,
+            'big_dim' : True
         }
 
 

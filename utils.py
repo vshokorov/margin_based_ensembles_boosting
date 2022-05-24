@@ -42,7 +42,7 @@ def save_checkpoint(dir, epoch, **kwargs):
     torch.save(state, filepath)
 
 
-def train(train_loader, model, optimizer, criterion, device, regularizer=None, lr_schedule=None):
+def train(train_loader, model, optimizer, criterion, device, regularizer=None, grad_clip=None, lr_schedule=None):
     loss_sum = 0.0
     correct = 0.0
 
@@ -52,8 +52,8 @@ def train(train_loader, model, optimizer, criterion, device, regularizer=None, l
         if lr_schedule is not None:
             lr = lr_schedule(iter / num_iters)
             adjust_learning_rate(optimizer, lr)
-        input = input.to(device) 
-        target = target.to(device) # async=True
+        input = input.to(device, non_blocking=True)
+        target = target.to(device, non_blocking=True) # async=True
 
         output = model(input)
         loss = criterion(output, target)
@@ -61,6 +61,8 @@ def train(train_loader, model, optimizer, criterion, device, regularizer=None, l
             loss += regularizer(model)
 
         optimizer.zero_grad()
+        if grad_clip is not None:
+            torch.nn.utils.clip_grad_value_(model.parameters(), grad_clip)
         loss.backward()
         optimizer.step()
 
@@ -170,6 +172,24 @@ def lr_schedule(lr_shed_type):
                 else:
                     factor = 0.01
                 return factor * base_lr
+        elif lr_shed_type == "warmup":
+            def learning_rate_schedule(base_lr, epoch, total_epochs):
+                alpha = epoch / total_epochs
+                if alpha <= 0.2:
+                    factor = alpha * 5
+                else:
+                    factor = ((1 - alpha) / (0.8)) ** 2
+                return factor * base_lr
+        elif lr_shed_type == "standard_0.3":
+            def learning_rate_schedule(base_lr, epoch, total_epochs):
+                alpha = epoch / total_epochs
+                if alpha <= 0.3:
+                    factor = 1.0
+                elif alpha <= 0.8:
+                    factor = 1.0 - (alpha - 0.3) / 0.5 * 0.99
+                else:
+                    factor = 0.01
+                return factor * base_lr
         elif lr_shed_type == "stair":
             def learning_rate_schedule(base_lr, epoch, total_epochs):
                 if epoch < total_epochs / 2:
@@ -191,4 +211,69 @@ def lr_schedule(lr_shed_type):
                     return (1 - factor) * base_lr + factor * min_value
                 else:
                     return min_value
+        elif lr_shed_type == "none":
+            def learning_rate_schedule(base_lr, *args, **kw_args):
+                return base_lr
         return learning_rate_schedule
+
+class OptimizerWithSchedule():
+    def __init__(self, optimizer, lr_schedule, lr_scheduler_args) -> None:
+        self.optimizer = optimizer
+        self.lr_schedule = lr_schedule
+        self.base_lr = lr_scheduler_args['max_lr']
+        self.epochs = lr_scheduler_args['epochs']
+        self.steps_per_epoch = lr_scheduler_args['steps_per_epoch']
+        self._step = 0
+        
+    def step(self):
+        self.optimizer.step()
+        
+        if isinstance(self.lr_schedule, torch.optim.lr_scheduler.OneCycleLR):
+            self.lr_schedule.step()
+        elif self._step % self.steps_per_epoch == 0:
+            self.__end_epoch()
+        self._step += 1
+        
+
+    def zero_grad(self):
+        self.optimizer.zero_grad()
+
+    def state_dict(self):
+        return self.optimizer.state_dict()
+
+    def load_state_dict(self, state_dict):
+        raise NotImplementedError()
+        return self.optimizer.load_state_dict(state_dict)
+
+    def __end_epoch(self):
+        lr = self.lr_schedule(self.base_lr, self._step//self.steps_per_epoch, self.epochs)
+        adjust_learning_rate(self.optimizer, lr)
+
+    def get_lr(self):
+        for param_group in self.optimizer.param_groups:
+            return param_group['lr']
+
+def optimizer_lrscheduled(opt_kwargs, optimizer_name, lr_shed_type, lr_scheduler_args= {}):
+
+    if 'nobiasWD' in optimizer_name:
+        bias_params = [value for key, value  in opt_kwargs['params'] if key[-4:] == 'bias' and value.requires_grad]
+        nbias_params = [value for key, value  in opt_kwargs['params'] if key[-4:] != 'bias' and value.requires_grad]
+        opt_kwargs['params'] = [{'params': bias_params},
+                                {'params': nbias_params, 'weight_decay': opt_kwargs['weight_decay']}]
+        opt_kwargs.pop('weight_decay')
+
+    if 'SGD' in optimizer_name:
+        optimizer = torch.optim.SGD(**opt_kwargs)
+    elif 'Adam' in optimizer_name:
+        opt_kwargs.pop('momentum')
+        optimizer = torch.optim.Adam(**opt_kwargs)
+    else:
+        raise
+    
+    if lr_shed_type == 'OneCycleLR':
+        lr_scehd = torch.optim.lr_scheduler.OneCycleLR(optimizer, **lr_scheduler_args)
+    else:
+        lr_scehd = lr_schedule(lr_shed_type)
+
+    return OptimizerWithSchedule(optimizer, lr_scehd, lr_scheduler_args)
+
