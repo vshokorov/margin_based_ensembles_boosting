@@ -267,7 +267,7 @@ def main():
             predictions_logits, targets = utils.predictions(loaders['train'], model, device)
             index = np.arange(len(predictions_logits))
             target_predictions_logits = predictions_logits[index, targets]
-            predictions_logits[index, targets] = -100
+            predictions_logits[index, targets] = -10000
             loaders['train'].dataset.gap_size = target_predictions_logits - predictions_logits.max(1)
             mean_gap_size = loaders['train'].dataset.gap_size.mean()
             loaders['train'].dataset.gap_size -= mean_gap_size
