@@ -160,6 +160,7 @@ def main():
 
         regularizer = None
 
+        gap_size = np.zeros((len(loaders['train'].dataset), ))
         loaders['train'].dataset.gap_size = np.zeros((len(loaders['train'].dataset), ))
         
         num_model = 0
@@ -267,11 +268,12 @@ def main():
             predictions_logits, targets = utils.predictions(loaders['train'], model, device)
             index = np.arange(len(predictions_logits))
             target_predictions_logits = predictions_logits[index, targets]
-            predictions_logits[index, targets] = -1000000
-            gap_size = target_predictions_logits - predictions_logits.max(1)
-            mean_gap_size = gap_size.mean()
-            loaders['train'].dataset.gap_size = mean_gap_size - gap_size
-            wandb.log({'mean_gap_size': mean_gap_size})
+            predictions_logits[index, targets] = -10000
+            local_gap_size = target_predictions_logits - predictions_logits.max(1)
+            gap_size += local_gap_size
+            loaders['train'].dataset.gap_size = gap_size.mean() - gap_size
+            wandb.log({'mean_gap_size': gap_size.mean()})
+            wandb.log({'local_mean_gap_size': local_gap_size.mean()})
             
             run.finish()
             if test_res['accuracy'] >= 20:
