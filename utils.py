@@ -41,6 +41,60 @@ def save_checkpoint(dir, epoch, **kwargs):
     
     torch.save(state, filepath)
 
+def get_params_vector(net):
+    params_lst = [param.clone().detach().reshape(-1) for param in net.parameters()]
+    params_tensor = torch.cat(params_lst)
+    return params_tensor
+
+def get_grad_vector(net):
+    params_grad_lst = [param.grad.detach().reshape(-1) for param in net.parameters()]
+    params_grad_tensor = torch.cat(params_grad_lst)
+    return params_grad_tensor
+
+def train_with_grad_log(train_loader, model, optimizer, criterion, device, regularizer=None, grad_clip=None, lr_schedule=None):
+    loss_sum = 0.0
+    correct = 0.0
+    grad_norm = []
+    opt_step_norm = []
+
+    num_iters = len(train_loader)
+    model.train()
+    for iter, (input, target) in enumerate(train_loader):
+        if lr_schedule is not None:
+            lr = lr_schedule(iter / num_iters)
+            adjust_learning_rate(optimizer, lr)
+        input = input.to(device, non_blocking=True)
+        target = target.to(device, non_blocking=True) # async=True
+
+        output = model(input)
+        
+        loss = criterion(output, target)
+        if regularizer is not None:
+            loss += regularizer(model)
+
+        optimizer.zero_grad()
+        if grad_clip is not None:
+            torch.nn.utils.clip_grad_value_(model.parameters(), grad_clip)
+        
+        params_before_step = get_params_vector(model)
+        loss.backward()
+        optimizer.step()
+        params_after_step = get_params_vector(model)
+        opt_step_norm.append(torch.norm(params_after_step - params_before_step).item())
+        grad_norm.append(torch.norm(get_grad_vector(model)).item())
+
+        loss_sum += loss.item() * input.size(0)
+        pred = output.data.argmax(1, keepdim=True)
+        correct += pred.eq(target.data.view_as(pred)).sum().item()
+
+    return {
+        'loss': loss_sum / len(train_loader.dataset),
+        'accuracy': correct * 100.0 / len(train_loader.dataset),
+        'grad_norm': grad_norm,
+        'opt_step_norm': opt_step_norm
+    }
+
+
 
 def train(train_loader, model, optimizer, criterion, device, regularizer=None, grad_clip=None, lr_schedule=None):
     loss_sum = 0.0

@@ -56,7 +56,8 @@ for work_dir in tqdm(work_dirs):
         print(f'[ERROR] No such directory {work_dir}')
         continue
     
-    for num_model in range(len(list(filter(lambda x: 'cpt' in x, os.listdir(work_dir))))):
+    for num_model in [int(i.replace('model_run', '', ).replace('.cpt', '')) 
+                          for i in filter(lambda x: re.match('^model_run\d+.cpt$', x) is not None, os.listdir(work_dirs[0]))]:
         
         try:
             if (os.path.exists(work_dir + 'predictions_test_run%d.npy' % num_model) and
