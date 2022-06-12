@@ -1,6 +1,4 @@
 # run: CUDA_VISIBLE_DEVICES=<номер GPU> <команда>
-wandb_api_key="967df0955ba82554544659fe56aae719bbad58c6"
-
 
 python3 train_ens.py --dir=logs/oct \
                      --data_path=./data/ \
@@ -21,5 +19,4 @@ python3 train_ens.py --dir=logs/oct \
                      --seed 25477 \
                      --width 64 \
                      --num-nets=15 \
-                     --num-exps=1 \
-                     --wandb_api_key=$wandb_api_key
+                     --num-exps=1

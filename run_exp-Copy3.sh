@@ -1,5 +1,4 @@
 # run: CUDA_VISIBLE_DEVICES=<номер GPU> <команда>
-wandb_api_key="967df0955ba82554544659fe56aae719bbad58c6"
 
 
 for gap in 0 0.5 1 1.5 2 2.5 3 3.5 4 4.5 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25
@@ -24,8 +23,7 @@ do
                      --seed 25477 \
                      --width 64 \
                      --num-nets=2 \
-                     --num-exps=1 \
-                     --wandb_api_key=$wandb_api_key
+                     --num-exps=1
 done
 
 
@@ -51,8 +49,7 @@ do
                      --seed 25477 \
                      --width 64 \
                      --num-nets=2 \
-                     --num-exps=1 \
-                     --wandb_api_key=$wandb_api_key
+                     --num-exps=1
 done
 
 
@@ -78,6 +75,5 @@ do
                      --seed 25477 \
                      --width 16 \
                      --num-nets=2 \
-                     --num-exps=1 \
-                     --wandb_api_key=$wandb_api_key
+                     --num-exps=1
 done
