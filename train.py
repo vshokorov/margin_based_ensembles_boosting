@@ -290,6 +290,7 @@ def main():
                 attempt_number += 1
                 if attempt_number == MAX_FAIL_RUN_NUMBER:
                     num_model += 1
+                    attempt_number = 0
 
     return log.path    
         
