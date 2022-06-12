@@ -268,7 +268,7 @@ def main():
             predictions_logits, targets = utils.predictions(loaders['train'], model, device)
             index = np.arange(len(predictions_logits))
             target_predictions_logits = predictions_logits[index, targets]
-            predictions_logits[index, targets] = -10000
+            predictions_logits[index, targets] = predictions_logits.min() - 10
             local_gap_size = target_predictions_logits - predictions_logits.max(1)
             gap_size += local_gap_size
             loaders['train'].dataset.gap_size = gap_size.mean() - gap_size
@@ -284,6 +284,7 @@ def main():
                 attempt_number += 1
                 if attempt_number == MAX_FAIL_RUN_NUMBER:
                     num_model += 1
+                    attempt_number = 0
 
     return log.path    
         
