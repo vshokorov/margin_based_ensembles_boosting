@@ -269,6 +269,9 @@ def main():
             target_predictions_logits = predictions_logits[index, targets]
             predictions_logits[index, targets] = predictions_logits.min() - 10
             gap_size = target_predictions_logits - predictions_logits.max(1)
+            
+            # gap_size = np.clip(gap_size, 0, None)
+            
             mean_gap_size = gap_size.mean()
             loaders['train'].dataset.gap_size = mean_gap_size - gap_size
             wandb.log({'mean_gap_size': mean_gap_size})
