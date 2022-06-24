@@ -102,15 +102,16 @@ def train(train_loader, model, optimizer, criterion, device, regularizer=None, g
 
     num_iters = len(train_loader)
     model.train()
-    for iter, (input, target) in enumerate(train_loader):
+    for iter, (input, gap_size, target) in enumerate(train_loader):
         if lr_schedule is not None:
             lr = lr_schedule(iter / num_iters)
             adjust_learning_rate(optimizer, lr)
         input = input.to(device, non_blocking=True)
+        gap_size = gap_size.to(device, non_blocking=True)
         target = target.to(device, non_blocking=True) # async=True
 
         output = model(input)
-        loss = criterion(output, target)
+        loss = criterion(output, target, gap_size)
         if regularizer is not None:
             loss += regularizer(model)
 

@@ -93,8 +93,6 @@ def main():
                         help='initialization name (default: standard), available also: PATH')
     parser.add_argument('--noisy_data', action='store_true',
                         help='create noisy dataset, p_{idx is noise}=0.2')
-    parser.add_argument('--gap_size', type=float, default=None,
-                        help='additional gap in logits')
     parser.add_argument('--wandb_api_key', type=str, default=None,
                         help='wandb api key')
 
@@ -155,7 +153,7 @@ def main():
             architecture.kwargs["k"] = args.width
             architecture.kwargs["norm_type"] = args.logit_norm_type
             architecture.kwargs["p"] = args.dropout
-        
+                
         def criterion(x, y, gap_size=0):
             x[torch.arange(x.size(0)), y] -= gap_size
             return F.cross_entropy(x, y)
@@ -168,20 +166,7 @@ def main():
         while num_model < args.num_nets:
             
             if args.bootstrapping:
-                loaders, num_classes = data.loaders(
-                    args.dataset,
-                    args.data_path,
-                    args.batch_size,
-                    args.num_workers,
-                    args.transform,
-                    args.use_test,
-                    args.bootstrapping,
-                    noisy_data=args.noisy_data,
-                )
-                
-                if args.shorten_dataset:
-                    loaders["train"].dataset.targets = loaders["train"].dataset.targets[:5000]
-                    loaders["train"].dataset.data = loaders["train"].dataset.data[:5000]
+                raise DeprecationWarning()
                 
             model = architecture.base(num_classes=num_classes, **architecture.kwargs)
             model.temperature = args.train_temperature
@@ -278,10 +263,24 @@ def main():
                     optimizer_state=optimizer.state_dict()
                 )
 
+            del loaders['train'].dataset.gap_size
+            predictions_logits, targets = utils.predictions(loaders['train'], model, device)
+            index = np.arange(len(predictions_logits))
+            target_predictions_logits = predictions_logits[index, targets]
+            predictions_logits[index, targets] = predictions_logits.min() - 10
+            gap_size = target_predictions_logits - predictions_logits.max(1)
+            
+            # gap_size = np.clip(gap_size, 0, None)
+            
+            mean_gap_size = gap_size.mean()
+            loaders['train'].dataset.gap_size = mean_gap_size - gap_size
+            wandb.log({'mean_gap_size': mean_gap_size})
+            
             run.finish()
             if test_res['accuracy'] >= 20:
                 num_model += 1
                 attempt_number = 0
+
             else:
                 attempt_number += 1
                 if attempt_number == MAX_FAIL_RUN_NUMBER:

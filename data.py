@@ -32,7 +32,11 @@ class bootstrapped_CIFAR10(torchvision.datasets.CIFAR10):
         self.num_classes = max(self.targets) + 1
     
     def __getitem__(self, idx):
-        return super().__getitem__(self.idxs[idx])
+        if hasattr(self, 'gap_size'):
+            a, b = super().__getitem__(self.idxs[idx])
+            return (a, self.gap_size[self.idxs[idx]], b)
+        else:
+            return super().__getitem__(self.idxs[idx])
 
 class bootstrapped_CIFAR100(torchvision.datasets.CIFAR100):
     def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, 
@@ -62,7 +66,11 @@ class bootstrapped_CIFAR100(torchvision.datasets.CIFAR100):
         self.num_classes = max(self.targets) + 1
     
     def __getitem__(self, idx):
-        return super().__getitem__(self.idxs[idx])
+        if hasattr(self, 'gap_size'):
+            a, b = super().__getitem__(self.idxs[idx])
+            return (a, self.gap_size[self.idxs[idx]], b)
+        else:
+            return super().__getitem__(self.idxs[idx])
 
 class SVHN_dataset(torchvision.datasets.SVHN):
     def __init__(self, *args, test_size: int=5000, use_bootstrapping: bool=False, 
@@ -88,7 +96,11 @@ class SVHN_dataset(torchvision.datasets.SVHN):
         self.num_classes = max(self.labels) + 1
     
     def __getitem__(self, idx):
-        return super().__getitem__(self.idxs[idx])
+        if hasattr(self, 'gap_size'):
+            a, b = super().__getitem__(self.idxs[idx])
+            return (a, self.gap_size[self.idxs[idx]], b)
+        else:
+            return super().__getitem__(self.idxs[idx])
 
 class Transforms:
 
