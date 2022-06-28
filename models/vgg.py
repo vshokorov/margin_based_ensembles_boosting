@@ -60,7 +60,8 @@ def make_layers(config, batch_norm=False, fix_points=None):
 
 
 class VGGBase(nn.Module):
-    def __init__(self, num_classes, depth=16, batch_norm=False, k=64, p=0.5, norm_type=None):
+    def __init__(self, num_classes, depth=16, batch_norm=False, k=64, p=0.5, 
+                 norm_type=None, temperature=None):
         super(VGGBase, self).__init__()
         config = get_config(depth, k=k)
         layer_blocks, activation_blocks, poolings = make_layers(config, batch_norm)
@@ -98,7 +99,7 @@ class VGGBase(nn.Module):
         else:
             raise NotImplementedError()
         self.logit_norm = norm
-        self.temperature = 1
+        self.temperature = temperature
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

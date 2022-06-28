@@ -25,22 +25,10 @@ class Capturing(list):
         del self._stringio    # free up some memory
         sys.stdout = self._stdout
 
-@torch.no_grad()
-def predictions(test_loader, model, **kwargs):
-    model.eval()
-    preds = []
-    targets = []
-    for input, target in test_loader:
-        input = input.cuda() # async=True
-        output = model(input, **kwargs)
-        probs = output #F.softmax(output, dim=1)
-        preds.append(probs.cpu().data.numpy())
-        targets.append(target.numpy())
-    return np.vstack(preds), np.concatenate(targets)
-
 api = wandb.Api(timeout=19)
 entity, project = "vetrov_disciples", "power_laws_deep_ensembles"  # set to your entity and project 
 runs = api.runs(entity + "/" + project) 
+device = torch.device('cuda')
 
 run_names = []
 run_configs = {}
@@ -84,18 +72,18 @@ for work_dir in tqdm(work_dirs):
             # architecture.kwargs["use_InstanceNorm"] = use_InstanceNorm
             if "VGG" in c['model'] or "WideResNet" in c['model']:
                 architecture.kwargs["p"] = c['dropout']
-            model = architecture.base(num_classes=num_classes, **architecture.kwargs).cuda()
+            model = architecture.base(num_classes=num_classes, **architecture.kwargs).to(device)
             _ = model.eval()
 
             saved_data = torch.load(work_dir+f'model_run{num_model}.cpt', map_location='cpu')
             model.load_state_dict(saved_data['model_state'])
             
             if not os.path.exists(work_dir + 'predictions_test_run%d.npy' % num_model):
-                predictions_logits, targets = predictions(loaders['test'], model)
+                predictions_logits, targets = utils.predictions(loaders['test'], model, device)
                 np.save(work_dir + 'predictions_test_run%d' % num_model, predictions_logits)
             
             if not os.path.exists(work_dir + 'predictions_train_run%d.npy' % num_model):
-                predictions_logits, targets = predictions(loaders['train'], model)
+                predictions_logits, targets = utils.predictions(loaders['train'], model, device)
                 np.save(work_dir + 'predictions_train_run%d' % num_model, predictions_logits)
         except KeyboardInterrupt:
             raise KeyboardInterrupt

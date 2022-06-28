@@ -27,7 +27,7 @@ def conv_block(in_channels, out_channels, pool=False):
     return nn.Sequential(*layers)
 
 class ResNet9Base(nn.Module):
-    def __init__(self, in_channels, num_classes, norm_logits=False):
+    def __init__(self, in_channels, num_classes, norm_logits=False, **kwargs):
         super().__init__()
         # 3 x 32 x 32
         self.conv1 = conv_block(in_channels, 64)         # 64 x 32 x 32

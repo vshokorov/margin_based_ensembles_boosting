@@ -5,6 +5,7 @@ import torch.nn.functional as F
 
 import curves
 import metrics
+import data
 
 
 def l2_regularizer(weight_decay):
@@ -24,12 +25,6 @@ def cyclic_learning_rate(epoch, cycle, alpha_1, alpha_2):
         else:
             return alpha_1 * (2.0 * t - 1.0) + alpha_2 * (2.0 - 2.0 * t)
     return schedule
-
-
-def adjust_learning_rate(optimizer, lr):
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-    return lr
 
 
 def save_checkpoint(dir, epoch, **kwargs):
@@ -60,9 +55,6 @@ def train_with_grad_log(train_loader, model, optimizer, criterion, device, regul
     num_iters = len(train_loader)
     model.train()
     for iter, (input, target) in enumerate(train_loader):
-        if lr_schedule is not None:
-            lr = lr_schedule(iter / num_iters)
-            adjust_learning_rate(optimizer, lr)
         input = input.to(device, non_blocking=True)
         target = target.to(device, non_blocking=True) # async=True
 
@@ -102,13 +94,10 @@ def train(train_loader, model, optimizer, criterion, device, regularizer=None, g
 
     num_iters = len(train_loader)
     model.train()
-    for iter, (input, gap_size, target) in enumerate(train_loader):
-        if lr_schedule is not None:
-            lr = lr_schedule(iter / num_iters)
-            adjust_learning_rate(optimizer, lr)
-        input = input.to(device, non_blocking=True)
-        gap_size = gap_size.to(device, non_blocking=True)
-        target = target.to(device, non_blocking=True) # async=True
+    for iter, batch in enumerate(train_loader):
+        input = batch['input'].to(device, non_blocking=True)
+        gap_size = batch['gap'].to(device, non_blocking=True) if 'gap' in batch else None
+        target = batch['target'].to(device, non_blocking=True) # async=True
 
         output = model(input)
         loss = criterion(output, target, gap_size)
@@ -150,13 +139,14 @@ def test(test_loader, model, criterion, device, regularizer=None, **kwargs):
     }
 
 
-
+@torch.no_grad()
 def predictions(test_loader, model, device, **kwargs):
     model.eval()
     preds = []
     targets = []
-    for input, target in test_loader:
-        input = input.to(device) # async=True
+    for batch in test_loader:
+        input = batch['input'].to(device) # async=True
+        target = batch['target']
         output = model(input, **kwargs)
         probs = output #F.softmax(output, dim=1)
         preds.append(probs.cpu().data.numpy())
@@ -203,7 +193,8 @@ def update_bn(loader, model, device, **kwargs):
     model.apply(reset_bn)
     model.apply(lambda module: _get_momenta(module, momenta))
     num_samples = 0
-    for input, _ in loader:
+    for batch in loader:
+        input = batch['input']
         input = input.to(device) # async=True
         batch_size = input.data.size(0)
 
@@ -216,119 +207,29 @@ def update_bn(loader, model, device, **kwargs):
 
     model.apply(lambda module: _set_momenta(module, momenta))
 
-def lr_schedule(lr_shed_type):
-        if lr_shed_type == "standard":
-            def learning_rate_schedule(base_lr, epoch, total_epochs):
-                alpha = epoch / total_epochs
-                if alpha <= 0.5:
-                    factor = 1.0
-                elif alpha <= 0.9:
-                    factor = 1.0 - (alpha - 0.5) / 0.4 * 0.99
-                else:
-                    factor = 0.01
-                return factor * base_lr
-        elif lr_shed_type == "warmup":
-            def learning_rate_schedule(base_lr, epoch, total_epochs):
-                alpha = epoch / total_epochs
-                if alpha <= 0.2:
-                    factor = alpha * 5
-                else:
-                    factor = ((1 - alpha) / (0.8)) ** 2
-                return factor * base_lr
-        elif lr_shed_type == "standard_0.3":
-            def learning_rate_schedule(base_lr, epoch, total_epochs):
-                alpha = epoch / total_epochs
-                if alpha <= 0.3:
-                    factor = 1.0
-                elif alpha <= 0.8:
-                    factor = 1.0 - (alpha - 0.3) / 0.5 * 0.99
-                else:
-                    factor = 0.01
-                return factor * base_lr
-        elif lr_shed_type == "stair":
-            def learning_rate_schedule(base_lr, epoch, total_epochs):
-                if epoch < total_epochs / 2:
-                    factor = 1.0
-                else:
-                    factor = 0.1
-                return factor * base_lr
-        elif lr_shed_type == "exp":
-            def learning_rate_schedule(base_lr, epoch, total_epochs):
-                factor = 0.9885 ** epoch
-                return factor * base_lr
-        elif lr_shed_type == "standard_fixed_min":
-            def learning_rate_schedule(base_lr, epoch, total_epochs, min_value = 0.0005):
-                alpha = epoch / total_epochs
-                if alpha <= 0.5:
-                    return base_lr
-                elif alpha <= 0.9:
-                    factor = (alpha - 0.5) / 0.4
-                    return (1 - factor) * base_lr + factor * min_value
-                else:
-                    return min_value
-        elif lr_shed_type == "none":
-            def learning_rate_schedule(base_lr, *args, **kw_args):
-                return base_lr
-        return learning_rate_schedule
+def none_or_int(value):
+    if value == 'None':
+        return None
+    return int(value)
 
-class OptimizerWithSchedule():
-    def __init__(self, optimizer, lr_schedule, lr_scheduler_args) -> None:
-        self.optimizer = optimizer
-        self.lr_schedule = lr_schedule
-        self.base_lr = lr_scheduler_args['max_lr']
-        self.epochs = lr_scheduler_args['epochs']
-        self.steps_per_epoch = lr_scheduler_args['steps_per_epoch']
-        self._step = 0
-        
-    def step(self):
-        self.optimizer.step()
-        
-        if isinstance(self.lr_schedule, torch.optim.lr_scheduler.OneCycleLR):
-            self.lr_schedule.step()
-        elif self._step % self.steps_per_epoch == 0:
-            self.__end_epoch()
-        self._step += 1
-        
+def none_or_float(value):
+    if value == 'None':
+        return None
+    return float(value)
 
-    def zero_grad(self):
-        self.optimizer.zero_grad()
+def train_test_predictions_from_scratch(dataset, data_path, model, device, transform,
+                                        batch_size = 1000, num_workers=4):
+    loaders, _ = data.loaders(dataset,
+                              data_path,
+                              batch_size,
+                              num_workers,
+                              transform if 'noDA' in transform else transform + '_noDA',
+                              use_test=False,
+                              shuffle_train=False
+                              )
+    predictions_train_logits, targets_train = predictions(loaders['train'], model, device)
+    predictions_test_logits, targets_test = predictions(loaders['test'], model, device)
 
-    def state_dict(self):
-        return self.optimizer.state_dict()
-
-    def load_state_dict(self, state_dict):
-        raise NotImplementedError()
-        return self.optimizer.load_state_dict(state_dict)
-
-    def __end_epoch(self):
-        lr = self.lr_schedule(self.base_lr, self._step//self.steps_per_epoch, self.epochs)
-        adjust_learning_rate(self.optimizer, lr)
-
-    def get_lr(self):
-        for param_group in self.optimizer.param_groups:
-            return param_group['lr']
-
-def optimizer_lrscheduled(opt_kwargs, optimizer_name, lr_shed_type, lr_scheduler_args= {}):
-
-    if 'nobiasWD' in optimizer_name:
-        bias_params = [value for key, value  in opt_kwargs['params'] if key[-4:] == 'bias' and value.requires_grad]
-        nbias_params = [value for key, value  in opt_kwargs['params'] if key[-4:] != 'bias' and value.requires_grad]
-        opt_kwargs['params'] = [{'params': bias_params},
-                                {'params': nbias_params, 'weight_decay': opt_kwargs['weight_decay']}]
-        opt_kwargs.pop('weight_decay')
-
-    if 'SGD' in optimizer_name:
-        optimizer = torch.optim.SGD(**opt_kwargs)
-    elif 'Adam' in optimizer_name:
-        opt_kwargs.pop('momentum')
-        optimizer = torch.optim.Adam(**opt_kwargs)
-    else:
-        raise
-    
-    if lr_shed_type == 'OneCycleLR':
-        lr_scehd = torch.optim.lr_scheduler.OneCycleLR(optimizer, **lr_scheduler_args)
-    else:
-        lr_scehd = lr_schedule(lr_shed_type)
-
-    return OptimizerWithSchedule(optimizer, lr_scehd, lr_scheduler_args)
-
+    return {'train': (predictions_train_logits, targets_train),
+            'test': (predictions_test_logits, targets_test)}
+                                        
