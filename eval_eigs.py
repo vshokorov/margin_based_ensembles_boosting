@@ -67,9 +67,9 @@ def eval_mvp(Mvp, vec, params, net, dataloader, **kwargs):
     M_v = [torch.zeros_like(p) for p in params]
     data_size = len(dataloader.dataset)
 
-    for inputs, targets in dataloader:
-        inputs = inputs.cuda()
-        targets = targets.cuda()
+    for batch in dataloader:
+        inputs = batch['input'].cuda()
+        targets = batch['target'].cuda()
         outputs = net(inputs)
 
         kwargs['targets'] = targets

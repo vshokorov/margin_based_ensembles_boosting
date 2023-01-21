@@ -65,7 +65,7 @@ class Logger:
             names = order
         values = [self.scalar_metrics[name][-1][1] for name in names]
         t = int(np.max([self.scalar_metrics[name][-1][0] for name in names])) 
-        fmt = ['%s'] + [self.fmt[name] if name in self.fmt else '.7f' for name in names]
+        fmt = ['%s'] + [self.fmt[name] if name in self.fmt else '.5f' for name in names]
 
         if self.handler:
             self.handler = False

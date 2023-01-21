@@ -3,6 +3,7 @@ from .wide_resnet import *
 from .small_resnet import *
 from .vision_transformer import *
 import torchvision
+import torch
 
 class ResNet34:
     """
@@ -71,3 +72,35 @@ class ViT:
         """
         self.base  = torchvision.models.vit_b_16
         self.kwargs = {}
+
+
+
+def ResNet18Base_dict(num_classes, emb_dim, *args, **kwargs):
+    """
+    Full args:
+        block: Type[Union[BasicBlock, Bottleneck]],
+        layers: List[int],
+        num_classes: int = 1000,
+        zero_init_residual: bool = False,
+        groups: int = 1,
+        width_per_group: int = 64,
+        replace_stride_with_dilation: Optional[List[bool]] = None,
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
+    """
+    m = torchvision.models.resnet18(num_classes = emb_dim, *args, **kwargs)
+    m.fc = torch.nn.Sequential(
+        m.fc, 
+        torch.nn.BatchNorm1d(emb_dim, eps=1e-05),
+        Dict_projector(emb_dim, num_classes, normalize_input=True)
+    )
+    torch.nn.init.constant_(m.fc[1].weight, 1.0)
+    m.fc[1].weight.requires_grad = False
+
+    return m
+
+        
+
+class ResNet18_norm_emb_dict:
+    def __init__(self):
+        self.base = ResNet18Base_dict
+        self.kwargs = {'emb_dim': 64}

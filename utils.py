@@ -88,9 +88,14 @@ def train_with_grad_log(train_loader, model, optimizer, criterion, device, regul
 
 
 
+import wandb
+
 def train(train_loader, model, optimizer, criterion, device, regularizer=None, grad_clip=None, lr_schedule=None):
     loss_sum = 0.0
     correct = 0.0
+    cos_self_sum = 0.0
+    cos_other_sum = 0.0
+    margin_sum = 0.0
 
     num_iters = len(train_loader)
     model.train()
@@ -100,6 +105,17 @@ def train(train_loader, model, optimizer, criterion, device, regularizer=None, g
         target = batch['target'].to(device, non_blocking=True) # async=True
 
         output = model(input)
+
+        cos_self = output[torch.range(0, len(target)-1, dtype=torch.long), target]
+        __output = output.detach() * 1.
+        __output[torch.range(0, len(target)-1, dtype=torch.long), target] = -1
+        margin = cos_self - __output.max(1).values 
+        
+        cos_other_sum += output.mean(1).sum().item()
+        cos_self_sum  += cos_self.sum().item()
+        margin_sum    += margin.sum().item()
+
+
         loss = criterion(output, target, gap_size)
         if regularizer is not None:
             loss += regularizer(model)
@@ -117,6 +133,9 @@ def train(train_loader, model, optimizer, criterion, device, regularizer=None, g
     return {
         'loss': loss_sum / len(train_loader.dataset),
         'accuracy': correct * 100.0 / len(train_loader.dataset),
+        'cos_self': cos_self_sum / len(train_loader.dataset),
+        'cos_other': cos_other_sum / len(train_loader.dataset),
+        'margin': margin_sum / len(train_loader.dataset),
     }
 
 
@@ -129,13 +148,24 @@ def test(test_loader, model, criterion, device, regularizer=None, **kwargs):
     if regularizer is not None:
         loss += regularizer(model)
     
-    nll_ = -metrics.metrics_kfold(predictions_logits, targets, n_splits=2, n_runs=5,\
-                                      verbose=False, temp_scale=True)["ll"]
+    # nll_ = -metrics.metrics_kfold(predictions_logits, targets, n_splits=2, n_runs=5,\
+    #                                   verbose=False, temp_scale=True)["ll"]
+
+    output = torch.from_numpy(predictions_logits)
+    torch_targets = torch.from_numpy(targets)
+    cos_self = output[torch.range(0, len(torch_targets)-1, dtype=torch.long), torch_targets]
+    __output = output.detach() * 1.
+    __output[torch.range(0, len(torch_targets)-1, dtype=torch.long), torch_targets] = -1
+    margin = cos_self - __output.max(1).values 
+    cos_other = output.mean(axis=1)
 
     return {
-        'nll': nll_,
+        # 'nll': nll_,
         'loss': loss.item(),
         'accuracy': (np.argmax(predictions_logits, axis=1)==targets).mean() * 100.0,
+        'cos_self': cos_self.mean(),
+        'cos_other': cos_other.mean(),
+        'margin': margin.mean(),
     }
 
 
@@ -218,17 +248,34 @@ def none_or_float(value):
     return float(value)
 
 def train_test_predictions_from_scratch(dataset, data_path, model, device, transform,
-                                        batch_size = 1000, num_workers=4):
-    loaders, _ = data.loaders(dataset,
-                              data_path,
-                              batch_size,
-                              num_workers,
-                              transform if 'noDA' in transform else transform + '_noDA',
-                              use_test=False,
-                              shuffle_train=False
-                              )
-    predictions_train_logits, targets_train = predictions(loaders['train'], model, device)
-    predictions_test_logits, targets_test = predictions(loaders['test'], model, device)
+                                        batch_size = 1000, aug_predictions = False, 
+                                        num_workers=4, iterations=10):
+    if aug_predictions:
+        transform = transform.replace('_noDA', '') if 'noDA' in transform else transform
+    else:
+        transform = transform if 'noDA' in transform else transform + '_noDA'
+        iterations = 1
+    
+    loaders, num_classes = data.loaders(
+        dataset,
+        data_path,
+        batch_size,
+        num_workers,
+        transform,
+        use_test=False,
+        shuffle_train=False
+    )
+    predictions_train_logits = 0 # np.zeros((len(loaders['train'].dataset), num_classes))
+    predictions_test_logits = 0 # np.zeros((len(loaders['test'].dataset), num_classes))
+
+    for _ in range(iterations):
+        p, targets_train = predictions(loaders['train'], model, device)
+        predictions_train_logits += p
+        p, targets_test = predictions(loaders['test'], model, device)
+        predictions_test_logits += p
+    
+    predictions_train_logits /= iterations
+    predictions_test_logits /= iterations
 
     return {'train': (predictions_train_logits, targets_train),
             'test': (predictions_test_logits, targets_test)}
