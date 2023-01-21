@@ -1,6 +1,3 @@
-The code for the paper 
-[**On Power Laws in Deep Ensembles**](https://arxiv.org/abs/2007.08483), NeurIPS'20 
-
 #### Main scripts:
 
 __train.py__: A script for training (and evaluating) the ensembles of VGG and WideResNet of different network sizes and ensemble sizes, for several times (e. g. for averaging the results). The script is based on [this repository](https://github.com/timgaripov/swa).
@@ -29,46 +26,3 @@ Parameters:
 * --transform: data transformation and augmentation to use (VGG / ResNet); should be specified according to the model chosen
 * --save_freq / print_freq: how frequently to save the model / log
 * --not-save-weights: if specified, the weights are not saved (useful when training huge ensembles)
-
-__gather_nlls.py__: A script for computing non-calibrated NLLs / NLLs with fixed temperature / CNLLs of trained ensembles.
-
-Usage:
-```(bash)
-python3 gather_nlls.py --dataset CIFAR100 --model VGG16 --setup 1 --reg optimal --comment _my_results
-```
-
-Parameters:
-* --dataset: CIFAR100 / CIFAR10
-* --model: VGG16 / WideResNet28x10
-* --setup: 1 - applying temperature after averaging, 2 - applying temperature before averaging
-* --reg: optimal - minimizing w.r.t. temperature; grid - computing NLL for each temperature on the grid
-* --comment: additional string to be used in the name of the file containing the results of the run
-
-#### Contents
-* train.py: training/evaluation script
-* consts.py: hyperparameters for all considered models and their sizes
-* data.py: data processing code
-* metrics.py: functions to compute NLL, CNLL etc. of a single model (borrowed from [this repo](https://github.com/bayesgroup/pytorch-ensembles))
-* models.py: architectures specifications (standard PyTorch implementation)
-* my_utils.py, utils.py: technical stuff
-* logger.py: logging functions (author: @senya-ashukha)
-* gather_nlls.py: script for computing NLLS / CNLLS
-* gather_nlls_module.py: code for processing a large bunch of trained ensembles and computing NLLs/CNLLs for different network sizes, ensemble sizes and runs
-
-#### Attribution
-
-Parts of this code are based on the following repositories:
-- [Stochastic Weight Averaging (SWA)](https://github.com/timgaripov/swa). Pavel Izmailov, Dmitrii Podoprikhin, Timur Garipov, Dmitry Vetrov, Andrew Gordon Wilson.
-- [Pitfalls of In-Domain Uncertainty Estimation and Ensembling in Deep Learning](https://github.com/bayesgroup/pytorch-ensembles). Arsenii Ashukha, Alexander Lyzhov, Dmitry Molchanov, Dmitry Vetrov.
-- [PyTorch](https://github.com/pytorch/pytorch) (we used version 1.2.0)
-
-#### Citation
-
-```
-@article{lobacheva20power,
-  title={On Power Laws in Deep Ensembles},
-  author={Lobacheva, Ekaterina and Chirkova, Nadezhda and Kodryan, Maxim and Vetrov, Dmitry}
-  journal={In Proceedings of the Neural Information Processing Systems (NeurIPS'20), Vancouver, Canada},
-  year={2020}
-}
-```
