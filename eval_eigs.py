@@ -155,7 +155,7 @@ def eval_trace(model, dataloader, fisher=True, train_mode=False, n_vecs=5):
         kwargs['criterion'] = criterion 
 
     trace = 0.0
-    params = list(model.parameters())
+    params = [p for p in model.parameters() if p.requires_grad]
     N = sum(p.numel() for p in params)
     
     for _ in range(n_vecs):

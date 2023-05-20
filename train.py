@@ -242,7 +242,9 @@ def main():
             for k, v in model.get_weight_norms().items():
                 wandb_log_dict[k] = v
             
-            wandb_log_dict['correlation_linear'] = model.get_cos_for_last_linear()
+            for k, v in model.get_info_for_last_linear().items():
+                wandb_log_dict[k] = v
+            
             wandb_log_dict['cos_self_test']   = test_res['cos_self']
             wandb_log_dict['cos_other_test']  = test_res['cos_other']
             wandb_log_dict['margin_test']     = test_res['margin']

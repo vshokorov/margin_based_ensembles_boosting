@@ -42,7 +42,7 @@ def get_params_vector(net):
     return params_tensor
 
 def get_grad_vector(net):
-    params_grad_lst = [param.grad.detach().reshape(-1) for param in net.parameters()]
+    params_grad_lst = [param.grad.detach().reshape(-1) for param in net.parameters() if param.requires_grad]
     params_grad_tensor = torch.cat(params_grad_lst)
     return params_grad_tensor
 

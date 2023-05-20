@@ -102,6 +102,20 @@ class Ens_gap_editor():
         mean_margin = margin.mean()
         return self.initial_gap(len(margin)) + mean_margin - margin, mean_margin
 
+    def save_mean_reverse_gap(self, margin, *args):
+        mean_margin = margin.mean()
+        return self.initial_gap(len(margin)) + 2 * mean_margin - margin, mean_margin
+    
+    def max2min_min2max(self, margin, *args):
+        mean_margin = margin.mean()
+        return self.initial_gap(len(margin)) + margin.min() - margin + margin.max(), mean_margin
+
+    def gap_is_meanmargin(self, margin, last_gap, num_model, *args):
+        # One model in ensemble means that num_model = 0
+        margin = (last_gap * num_model  + margin) / (num_model + 1)
+        mean_margin = margin.mean()
+        return self.initial_gap(len(margin)) + margin, mean_margin
+
     def simple_gap_center_by_mode(self, margin, *args):
         mean_margin = margin.mean()
         mode_margin = stats.mode(margin).mode
